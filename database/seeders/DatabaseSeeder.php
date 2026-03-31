@@ -13,23 +13,23 @@ class DatabaseSeeder extends Seeder
     {
         User::create([
             'name' => 'Widi Admin',
-            'email' => 'admin@widi.com',
+            'email' => 'admin@gmail.com',
             'password' => Hash::make('password'), 
             'role' => 'admin',
-            'phone' => '081234567890',
+            'phone' => '085536949348',
             'address' => 'Kantor Pusat CV Widi',
         ]);
 
         User::create([
             'name' => 'Budi Teknisi',
-            'email' => 'teknisi@widi.com',
+            'email' => 'teknisibudi@gmail.com',
             'password' => Hash::make('password'),
             'role' => 'technician',
-            'phone' => '089876543210',
+            'phone' => '087842949212',
             'address' => 'Mess Teknisi',
         ]);
 
-                User::create([
+        User::create([
             'name' => 'Andi Teknisi',
             'email' => 'teknisiandi@gmail.com',
             'password' => Hash::make('password'),
