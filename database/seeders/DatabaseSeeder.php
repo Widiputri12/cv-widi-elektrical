@@ -38,16 +38,7 @@ class DatabaseSeeder extends Seeder
             'address' => 'Mess Teknisi 2',
         ]);
 
-        // User::create([
-        //     'name' => 'Andi Pelanggan',
-        //     'email' => 'andi@gmail.com',
-        //     'password' => Hash::make('password'),
-        //     'role' => 'customer',
-        //     'phone' => '085555555555',
-        //     'address' => 'Jl. Merdeka No. 45',
-        // ]);
 
-        //Data LAYANAN 
         $services = [
             [
                 'name' => 'Cuci AC Split (0.5 - 1 PK)',
