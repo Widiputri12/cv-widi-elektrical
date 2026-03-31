@@ -282,7 +282,7 @@
                             </div>
                         </div>
 
-                        <a href="https://wa.me/6281234567890" target="_blank" class="flex justify-center items-center w-full bg-green-500 text-white font-black py-4 rounded-xl border-2 border-[#1A1A1A] shadow-[4px_4px_0px_#1A1A1A] hover:shadow-none transition-all uppercase tracking-widest text-xs">Hubungi Admin Kami</a>
+                        <a href="https://wa.me/6282257917387" target="_blank" class="flex justify-center items-center w-full bg-green-500 text-white font-black py-4 rounded-xl border-2 border-[#1A1A1A] shadow-[4px_4px_0px_#1A1A1A] hover:shadow-none transition-all uppercase tracking-widest text-xs">Hubungi Admin Kami</a>
                     </div>
                 </div>
 
