@@ -55,12 +55,11 @@
                     <div class="bg-white rounded-2xl border-4 border-[#1A1A1A] shadow-[8px_8px_0px_#1A1A1A] overflow-hidden">
                         <div class="p-4 bg-[#1A1A1A] text-white flex justify-between items-center">
                             <h3 class="font-black uppercase text-xs italic">📍 Titik Geolocation (LBS)</h3>
-                            <a href="https://www.google.com/maps/search/?api=1&query=3{{ $order->latitude }},{{ $order->longitude }}" target="_blank" class="bg-[#FFD700] text-[#1A1A1A] px-4 py-1.5 rounded-lg text-[10px] font-black hover:scale-105 transition uppercase">
+                            <a href="https://www.google.com/maps?q={{ $order->latitude }},{{ $order->longitude }}" target="_blank" class="bg-[#FFD700] text-[#1A1A1A] px-4 py-1.5 rounded-lg text-[10px] font-black hover:scale-105 transition uppercase">
                                 Google Maps ↗
                             </a>
                         </div>
                         
-                        {{-- Assets Leaflet dipanggil langsung agar anti-error --}}
                         <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
                         <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
                         
@@ -73,48 +72,52 @@
                     </div>
                 </div>
 
-                {{-- SEKSI KANAN: STATUS PENUGASAN (DINAMIS) --}}
+                {{-- SEKSI KANAN: STATUS PENUGASAN & PEMBATALAN (REVISI DOSEN) --}}
                 <div class="md:col-span-1">
                     
-                    {{-- 1. JIKA ORDER SUDAH SELESAI (COMPLETED) --}}
+                    {{-- 1. JIKA ORDER SUDAH SELESAI --}}
                     @if($order->status == 'completed')
                         <div class="bg-white rounded-3xl border-4 border-[#1A1A1A] shadow-[8px_8px_0px_#22C55E] p-8 sticky top-10 text-center">
                             <div class="w-20 h-20 bg-[#DCFCE7] text-[#22C55E] rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-[#1A1A1A]">
                                 <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path></svg>
                             </div>
                             <h3 class="font-black text-2xl uppercase mb-2">Tugas Selesai</h3>
-                            <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-6 leading-tight">
-                                Pesanan ini telah diselesaikan oleh teknisi:
-                            </p>
                             <div class="bg-gray-50 border-2 border-[#1A1A1A] p-4 rounded-2xl mb-6">
                                 <p class="font-black text-[#1A1A1A] text-lg">{{ $order->technician->name ?? 'Teknisi' }}</p>
                                 <p class="text-[9px] font-bold text-green-600 uppercase">Status: Tersedia Kembali ✅</p>
                             </div>
-                            <span class="inline-block bg-[#1A1A1A] text-white px-6 py-2 rounded-full font-black text-[10px] uppercase tracking-tighter">
-                                Arsip Terkunci 🔒
-                            </span>
                         </div>
 
-                    {{-- 2. JIKA ORDER MASIH PENDING / PROSES (PENUGASAN AKTIF) --}}
+                    {{-- 2. JIKA ORDER DIBATALKAN --}}
+                    @elseif($order->status == 'cancelled')
+                        <div class="bg-white rounded-3xl border-4 border-[#1A1A1A] shadow-[8px_8px_0px_#EF4444] p-8 sticky top-10 text-center">
+                            <div class="w-20 h-20 bg-red-50 text-red-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-[#1A1A1A]">
+                                <span class="text-3xl font-black">X</span>
+                            </div>
+                            <h3 class="font-black text-xl uppercase mb-2">Dibatalkan</h3>
+                            <div class="p-4 bg-gray-50 border-2 border-dashed border-red-300 rounded-2xl italic">
+                                <p class="text-[10px] font-black text-gray-400 uppercase mb-1">Catatan Pembatalan:</p>
+                                <p class="text-xs font-bold text-red-600">"{{ $order->cancel_notes }}"</p>
+                            </div>
+                        </div>
+
+                    {{-- 3. JIKA ORDER PENDING/PROSES (FORM PLOTTING & CANCEL) --}}
                     @else
                         <div class="bg-white rounded-3xl border-4 border-[#1A1A1A] shadow-[8px_8px_0px_#FFD700] p-8 sticky top-10">
                             <h3 class="font-black text-xl uppercase mb-6 text-center italic underline decoration-[#D92323] decoration-4 underline-offset-4">Plotting Teknisi</h3>
                             
+                            {{-- FORM PLOTTING TEKNISI --}}
                             <form action="{{ route('admin.orders.assign', $order->id) }}" method="POST">
                                 @csrf
                                 @method('PUT')
-
                                 <div class="space-y-6">
                                     <div>
                                         <label class="block text-[10px] font-black uppercase text-gray-500 mb-2 italic tracking-widest">Pilih Personel Ready:</label>
                                         <select name="technician_id" required class="w-full border-4 border-[#1A1A1A] rounded-2xl p-4 font-black text-sm focus:ring-0 focus:border-[#D92323] appearance-none cursor-pointer bg-white">
                                             <option value="" disabled selected>-- PILIH TEKNISI --</option>
                                             @foreach($technicians as $tech)
-                                                <option value="{{ $tech->id }}" 
-                                                    {{ $tech->is_busy ? 'disabled' : '' }} 
-                                                    class="{{ $tech->is_busy ? 'text-red-400' : 'text-green-600 font-black' }}">
-                                                    {{ $tech->name }} 
-                                                    {{ $tech->is_busy ? ' (SEDANG BERTUGAS 🛠️)' : ' (READY ✅)' }}
+                                                <option value="{{ $tech->id }}" {{ $tech->is_busy ? 'disabled' : '' }} class="{{ $tech->is_busy ? 'text-red-400' : 'text-green-600 font-black' }}">
+                                                    {{ $tech->name }} {{ $tech->is_busy ? ' (BUSY 🛠️)' : ' (READY ✅)' }}
                                                 </option>
                                             @endforeach
                                         </select>
@@ -133,9 +136,29 @@
                                     </button>
                                 </div>
                             </form>
-                            
+
+                            {{-- REVISI DOSEN: FITUR PEMBATALAN ADMIN (DENGAN FORM TERTUTUP) --}}
+                            <div class="mt-8 pt-6 border-t-2 border-dashed border-gray-200">
+                                <h4 class="text-[10px] font-black uppercase text-red-600 mb-3 italic">⚠️ Opsi Pembatalan Admin</h4>
+                                
+                                <form action="{{ route('admin.orders.cancel', $order->id) }}" method="POST" onsubmit="return confirm('Yakin ingin membatalkan pesanan ini, Princess?')">
+                                    @csrf
+                                    <label class="block text-[9px] font-black uppercase text-gray-400 mb-1 tracking-widest">Alasan Pembatalan (Wajib):</label>
+                                    
+                                    {{-- Atribut name="cancel_notes" sangat krusial di sini --}}
+                                    <textarea name="cancel_notes" 
+                                        class="w-full border-2 border-gray-200 rounded-xl p-3 text-[11px] font-bold focus:border-red-500 focus:ring-0 placeholder:text-gray-300 transition-all" 
+                                        placeholder="Tulis alasan di sini..." 
+                                        required></textarea>
+                                    
+                                    <button type="submit" class="w-full mt-3 bg-white text-red-600 border-2 border-red-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-50 transition-all">
+                                        🚫 Batalkan Pesanan
+                                    </button>
+                                </form> {{-- PENUTUP FORM DITAMBAHKAN --}}
+                            </div>
+
                             <p class="mt-6 text-[9px] text-center font-bold text-gray-400 uppercase italic leading-none">
-                                *Hanya teknisi dengan status (Ready) yang dapat dipilih oleh sistem LBS.
+                                *Hanya teknisi dengan status (Ready) yang dapat dipilih sistem LBS.
                             </p>
                         </div>
                     @endif
@@ -145,32 +168,23 @@
         </div>
     </div>
 
-    {{-- SCRIPT PETA LBS LEAFLET --}}
+    {{-- SCRIPT PETA LBS --}}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            // Ambil koordinat dari PHP Laravel
             var lat = {{ $order->latitude ?? -7.2504 }};
             var lng = {{ $order->longitude ?? 112.7688 }};
             
-            // Inisialisasi Map (Gunakan window.onload agar Leaflet siap)
             if (typeof L !== 'undefined') {
-                var map = L.map('map', {
-                    scrollWheelZoom: false // Mencegah zoom tidak sengaja saat scroll
-                }).setView([lat, lng], 16);
-
+                var map = L.map('map', { scrollWheelZoom: false }).setView([lat, lng], 16);
                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                     attribution: '© CV. WIDI ELEKTRICAL'
                 }).addTo(map);
 
-                // Tambah Marker LBS
-                var marker = L.marker([lat, lng]).addTo(map)
-                    .bindPopup('<div class="font-black uppercase text-[10px]">Lokasi Target:<br><span class="text-[#D92323] font-black">{{ $order->user->name }}</span></div>')
+                L.marker([lat, lng]).addTo(map)
+                    .bindPopup('<div class="font-black uppercase text-[10px]">Lokasi Pelanggan:<br><span class="text-[#D92323]">{{ $order->user->name }}</span></div>')
                     .openPopup();
 
-                // Paksa render ulang kontainer map agar tidak glitch/abu-abu
-                setTimeout(function(){ 
-                    map.invalidateSize(); 
-                }, 500);
+                setTimeout(function(){ map.invalidateSize(); }, 500);
             }
         });
     </script>

@@ -10,7 +10,7 @@ use App\Models\Service;
 use App\Models\Gallery;
 use App\Services\FonnteService;
 use App\Services\MidtransService;
-use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Log; 
 
 class OrderController extends Controller
 {
@@ -189,5 +189,55 @@ class OrderController extends Controller
         }
 
         return redirect()->route('dashboard')->with('success', 'Laporan terkirim & Tagihan telah dibuat!');
+    }
+
+    /**
+     * Customer membatalkan pesanan (Hanya jika PENDING)
+     */
+    public function cancelByCustomer($id, FonnteService $fonnte) // Ditambahkan FonnteService
+    {
+        $order = Order::with('user')->findOrFail($id);
+
+        if ($order->status !== 'pending') {
+            return back()->with('error', 'Maaf Princess, pesanan sudah diproses dan tidak bisa dibatalkan.');
+        }
+
+        $order->update([
+            'status' => 'cancelled',
+            'cancel_notes' => 'Dibatalkan oleh Pelanggan'
+        ]);
+
+        // REVISI DOSEN: Notifikasi WA Pembatalan ke Pelanggan
+        if ($order->user && !empty($order->user->phone)) {
+            $pesanCancel = "Halo *{$order->user->name}*,\n\nPesanan Anda #{$order->id} telah BERHASIL DIBATALKAN sesuai permintaan Anda. 🙏";
+            $fonnte->sendMessage($order->user->phone, $pesanCancel);
+        }
+
+        return back()->with('success', 'Pesanan berhasil dibatalkan.');
+    }
+
+    /**
+     * Admin membatalkan pesanan (Wajib menyertakan alasan)
+     */
+    public function cancelByAdmin(Request $request, $id, FonnteService $fonnte) // Ditambahkan FonnteService
+    {
+        $request->validate([
+            'cancel_notes' => 'required|string|min:5' 
+        ]);
+
+        $order = Order::with('user')->findOrFail($id);
+        
+        $order->update([
+            'status' => 'cancelled',
+            'cancel_notes' => $request->cancel_notes
+        ]);
+
+        // REVISI DOSEN: Notifikasi WA Pembatalan ke Pelanggan (Dari Admin)
+        if ($order->user && !empty($order->user->phone)) {
+            $pesanCancelAdmin = "Halo *{$order->user->name}*,\n\nMohon maaf, pesanan Anda #{$order->id} terpaksa DIBATALKAN oleh Admin.\n\nAlasan: *{$request->cancel_notes}*\n\nSilakan pesan kembali di waktu lain. Terima kasih.";
+            $fonnte->sendMessage($order->user->phone, $pesanCancelAdmin);
+        }
+
+        return back()->with('success', 'Pesanan telah dibatalkan oleh Admin.');
     }
 }

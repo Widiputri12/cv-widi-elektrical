@@ -237,12 +237,17 @@
                             <h4 class="font-black text-[#1A1A1A] mb-4 text-[11px] uppercase border-b-2 pb-2 tracking-widest">Riwayat Servis</h4>
                             <div class="overflow-y-auto flex-1 space-y-3 pr-1 custom-scrollbar">
                             @forelse($myOrders as $order)
-                                <div class="p-4 border-2 rounded-2xl {{ $order->status == 'completed' ? 'bg-green-50 border-green-200' : 'bg-white border-gray-200' }} mb-4 shadow-sm">
+                                <div class="p-4 border-2 rounded-2xl 
+                                    {{ $order->payment_status == 'paid' ? 'bg-blue-50 border-blue-200' : 
+                                    ($order->status == 'completed' ? 'bg-green-50 border-green-200' : 
+                                    ($order->status == 'cancelled' ? 'bg-red-50 border-red-100 opacity-80' : 'bg-white border-gray-200')) }} mb-4 shadow-sm">
+                                    
                                     <div class="flex justify-between items-center mb-3">
-                                        <span class="text-[9px] font-black uppercase px-2 py-1 rounded-md {{ $order->status == 'completed' ? 'bg-green-200 text-green-800' : 'bg-yellow-100 text-yellow-700' }}">
-                                            {{ $order->status }}
+                                        <span class="text-[9px] font-black uppercase px-2 py-1 rounded-md 
+                                            {{ $order->status == 'completed' || $order->payment_status == 'paid' ? 'bg-green-200 text-green-800' : ($order->status == 'cancelled' ? 'bg-red-200 text-red-800' : 'bg-yellow-100 text-yellow-700') }}">
+                                            {{ $order->payment_status == 'paid' ? 'COMPLETED' : $order->status }}
                                         </span>
-                                        <span class="text-[9px] font-black uppercase px-2 py-1 rounded-md {{ $order->payment_status == 'paid' ? 'bg-blue-100 text-blue-700' : 'bg-red-100 text-red-700' }}">
+                                        <span class="text-[9px] font-black uppercase px-2 py-1 rounded-md {{ $order->payment_status == 'paid' ? 'bg-blue-600 text-white' : 'bg-red-100 text-red-700' }}">
                                             {{ $order->payment_status == 'paid' ? 'LUNAS ✅' : 'BELUM BAYAR ❌' }}
                                         </span>
                                     </div>
@@ -254,27 +259,61 @@
                                         @endforeach
                                     </h5>
 
-                                    {{-- LOGIKA TOMBOL BAYAR YANG DIPERKUAT --}}
-                                    @if($order->status == 'completed' && $order->payment_status == 'unpaid')
+                                    {{-- URUTAN LOGIKA (PENTING!) --}}
+                                    
+                                    {{-- A. JIKA SUDAH LUNAS --}}
+                                    @if($order->payment_status == 'paid')
+                                        <div class="flex items-center gap-2 p-3 bg-blue-100/50 rounded-xl border-2 border-blue-200">
+                                            <span class="text-blue-600">✅</span>
+                                            <p class="text-[9px] text-blue-700 italic font-bold uppercase">Terima kasih! Pesanan telah selesai & lunas.</p>
+                                        </div>
+
+                                    {{-- B. JIKA DIBATALKAN (Menampilkan Catatan Asli Admin) --}}
+                                    {{-- JIKA STATUS DIBATALKAN --}}
+                                    @elseif($order->status == 'cancelled')
+                                        <div class="p-3 bg-white border-2 border-dashed border-red-300 rounded-xl">
+                                            <p class="text-[9px] font-black text-red-600 uppercase mb-1">🚫 CATATAN PEMBATALAN:</p>
+                                            
+                                            {{-- TAMPILKAN HASIL KETIKAN ADMIN --}}
+                                            <p class="text-[10px] text-gray-700 font-bold italic leading-tight">
+                                                @if(!empty($order->cancel_notes))
+                                                    "{{ $order->cancel_notes }}"
+                                                @else
+                                                    "Pesanan dibatalkan tanpa catatan spesifik."
+                                                @endif
+                                            </p>
+                                        </div>
+
+                                    {{-- C. JIKA SUDAH SELESAI TAPI BELUM BAYAR (TOMBOL BAYAR) --}}
+                                    @elseif($order->status == 'completed' && $order->payment_status == 'unpaid')
                                         @if($order->snap_token)
-                                            {{-- JIKA TOKEN SUDAH ADA --}}
                                             <button onclick="bayarPesanan('{{ $order->snap_token }}')" 
                                                 class="w-full bg-[#FFD700] text-[#1A1A1A] text-xs font-black py-3 rounded-xl border-2 border-[#1A1A1A] shadow-[4px_4px_0px_#1A1A1A] uppercase hover:shadow-none hover:translate-x-0.5 hover:translate-y-0.5 transition-all">
                                                 💳 Bayar Sekarang (Rp {{ number_format($order->total_price, 0, ',', '.') }})
                                             </button>
                                         @else
-                                            {{-- JIKA TOKEN BELUM ADA (Emergency Reload) --}}
                                             <div class="text-center p-2 bg-red-50 border-2 border-dashed border-red-200 rounded-xl">
                                                 <p class="text-[10px] font-black text-red-600 uppercase mb-1">Menyiapkan Link Pembayaran...</p>
-                                                <p class="text-[8px] text-gray-400 font-bold uppercase italic">Silakan refresh halaman jika tombol tidak muncul</p>
                                             </div>
                                         @endif
-                                    @elseif($order->status != 'completed')
+
+                                    {{-- D. JIKA MASIH PENDING (TOMBOL CANCEL PELANGGAN) --}}
+                                    @elseif($order->status == 'pending')
+                                        <form action="{{ route('orders.cancel', $order->id) }}" method="POST" onsubmit="return confirm('Apa Anda yakin ingin membatalkan pesanan ini?')">
+                                            @csrf
+                                            <button type="submit" class="w-full bg-white text-red-600 text-[10px] font-black py-2 rounded-lg border-2 border-red-600 uppercase hover:bg-red-50 transition-all">
+                                                ❌ Batalkan Pesanan
+                                            </button>
+                                        </form>
+
+                                    {{-- E. JIKA SEDANG DIPROSES --}}
+                                    @else
                                         <div class="flex items-center gap-2 p-3 bg-gray-50 rounded-xl border-2 border-gray-100">
-                                            <span class="animate-spin text-gray-400">⏳</span>
-                                            <p class="text-[9px] text-gray-400 italic font-bold uppercase">Teknisi sedang bekerja, tagihan akan muncul setelah selesai.</p>
+                                            <span class="animate-spin text-gray-400">⚙️</span>
+                                            <p class="text-[9px] text-gray-400 italic font-bold uppercase">Teknisi sedang bekerja/menuju lokasi.</p>
                                         </div>
                                     @endif
+
                                 </div>
                             @empty
                                 <p class="text-xs font-bold text-center mt-10 text-gray-400 italic uppercase tracking-widest">Belum ada pesanan</p>
@@ -283,8 +322,6 @@
                         </div>
 
                         <a href="https://wa.me/6282257917387" target="_blank" class="flex justify-center items-center w-full bg-green-500 text-white font-black py-4 rounded-xl border-2 border-[#1A1A1A] shadow-[4px_4px_0px_#1A1A1A] hover:shadow-none transition-all uppercase tracking-widest text-xs">Hubungi Admin Kami</a>
-                    </div>
-                </div>
 
                 <script>
                     var defaultLat = -7.818838, defaultLng = 112.012563;

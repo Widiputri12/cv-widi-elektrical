@@ -44,6 +44,12 @@ Route::middleware(['auth'])->group(function () {
     // updateFinish: Mengupdate status is_busy menjadi 0 (Tersedia Kembali)
     Route::put('/orders/{id}/finish', [OrderController::class, 'updateFinish'])->name('technician.orders.updateFinish');
 
+    // Rute untuk Princess meng-cancel pesanannya sendiri
+    Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelByCustomer'])->name('orders.cancel');
+
+    // Rute untuk Admin meng-cancel (dengan catatan)
+    Route::post('/admin/orders/{id}/cancel', [OrderController::class, 'cancelByAdmin'])->name('admin.orders.cancel');
+
 });
 
 // --- 3. ADMIN MANAGEMENT (LBS MONITORING) ---
@@ -60,6 +66,8 @@ Route::middleware(['auth'])->prefix('admin')->name('admin.')->group(function () 
     Route::put('/galleries/{id}/approve', [GalleryController::class, 'approve'])->name('galleries.approve');
     Route::delete('/galleries/{id}', [GalleryController::class, 'destroy'])->name('galleries.destroy');
 });
+
+
 
 // --- 4. SYSTEM TOOLS ---
 Route::get('/reset-pending', function() {
