@@ -15,9 +15,9 @@ use Illuminate\Support\Facades\Log;
 class OrderController extends Controller
 {
     /**
-     * Customer membuat pesanan baru
+     * Customer membuat pesanan baru & Langsung Generate Tagihan DP
      */
-    public function store(Request $request, FonnteService $fonnte) 
+    public function store(Request $request, FonnteService $fonnte, MidtransService $midtrans) 
     {
         $user = Auth::user();
 
@@ -43,9 +43,8 @@ class OrderController extends Controller
 
         $services = Service::whereIn('id', $request->service_ids)->get();
         $totalPrice = $services->sum('price');
-        $serviceNames = $services->pluck('name')->implode(', ');
-
-
+        
+        // LOGIKA REVISI DOSEN: DP 50%
         $dpAmount = $totalPrice * 0.5;
         $remainingBalance = $totalPrice - $dpAmount;
 
@@ -56,24 +55,36 @@ class OrderController extends Controller
             'address_detail' => $request->address_detail,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
+            'notes' => $request->notes,
             'total_price' => $totalPrice,
-            'dp_amount' => $dpAmount, // Simpan nominal DP
-            'remaining_balance' => $remainingBalance, // Simpan sisa pelunasan
+            'dp_amount' => $dpAmount, 
+            'remaining_balance' => $remainingBalance,
             'status' => 'pending',        
             'payment_status' => 'unpaid', 
-            'payment_step' => 'dp', 
+            'payment_step' => 'dp', // Tahap pertama: DP
         ]);
 
         $order->services()->attach($request->service_ids);
 
-        // Notifikasi Admin via Fonnte
-        $pesanAdmin = "🚨 *ORDER BARU MASUK!* 🚨\n\n";
+        // GENERATE TOKEN DP SEKARANG (Agar tombol bayar langsung muncul)
+        try {
+            $snapToken = $midtrans->getSnapToken($order);
+            $order->update(['snap_token' => $snapToken]);
+            Log::info("Snap Token DP Berhasil untuk Order #{$order->id}");
+        } catch (\Exception $e) {
+            Log::error('Gagal buat token DP saat store: ' . $e->getMessage());
+        }
+
+        // Catatan: Notifikasi ke Admin via Fonnte sebaiknya di Callback 
+        // setelah DP Lunas, tapi jika Princess ingin tetap ada notifikasi awal:
+        $serviceNames = $services->pluck('name')->implode(', ');
+        $pesanAdmin = "🚨 *ORDER BARU (MENUNGGU DP)!* 🚨\n\n";
         $pesanAdmin .= "👤 Nama: {$user->name}\n";
-        $pesanAdmin .= "📞 WA: {$request->phone}\n";
         $pesanAdmin .= "🛠️ Layanan: {$serviceNames}\n";
         $pesanAdmin .= "💰 Total: Rp " . number_format($totalPrice, 0, ',', '.') . "\n";
-        $pesanAdmin .= "📅 Jadwal: " . date('d M Y', strtotime($order->booking_date)) . " ({$order->booking_time})\n\n";
-        $pesanAdmin .= "Segera proses di Dashboard Admin!";
+        $pesanAdmin .= "💵 DP 50%: Rp " . number_format($dpAmount, 0, ',', '.') . "\n";
+        $pesanAdmin .= "📅 Jadwal: " . date('d M Y', strtotime($order->booking_date)) . "\n\n";
+        $pesanAdmin .= "Pesanan masuk sistem, menunggu pembayaran DP dari pelanggan.";
 
         $admins = User::where('role', 'admin')->get();
         foreach ($admins as $admin) {
@@ -82,7 +93,7 @@ class OrderController extends Controller
             }
         }
 
-        return redirect()->route('dashboard')->with('success', 'Pesanan berhasil dibuat!'); 
+        return redirect()->route('dashboard')->with('success', 'Order berhasil! Silakan bayar DP 50% di Riwayat Servis agar teknisi kami proses.'); 
     }
 
     /**
@@ -110,7 +121,7 @@ class OrderController extends Controller
             'status' => 'confirmed', 
         ]);
 
-        // Set teknisi menjadi Sibuk (is_busy = 1)
+        // Set teknisi menjadi Sibuk
         User::where('id', $request->technician_id)->update(['is_busy' => 1]); 
 
         $order = Order::with(['user', 'technician', 'services'])->find($id);
@@ -139,7 +150,7 @@ class OrderController extends Controller
     }
 
     /**
-     * Teknisi menyelesaikan tugas (LBS Reset & Midtrans Token)
+     * Teknisi menyelesaikan tugas (LBS Reset & Generate Token Pelunasan)
      */
     public function updateFinish(Request $request, $id, MidtransService $midtrans, FonnteService $fonnte) 
     {
@@ -172,35 +183,25 @@ class OrderController extends Controller
         // 2. Kirim Notifikasi WA Selesai
         if ($order->user && !empty($order->user->phone)) {
             $serviceNames = $order->services->pluck('name')->implode(', ');
-            $pesanBayar = "Halo *{$order->user->name}*,\n\n";
-            $pesanBayar .= "Pengerjaan servis *{$serviceNames}* telah SELESAI! ❄️✨\n\n";
-            $pesanBayar .= "Silakan login ke dashboard CV. WIDI ELEKTRICAL untuk melakukan pembayaran.\n";
-            $pesanBayar .= "🔗 " . url('/dashboard') . "\n\nTerima kasih!";
-            
+            $pesanBayar = "Halo *{$order->user->name}*,\n\nPengerjaan servis *{$serviceNames}* telah SELESAI! ❄️✨\n\nSilakan bayar PELUNASAN di dashboard.\nTerima kasih!";
             $fonnte->sendMessage($order->user->phone, $pesanBayar);
         }
 
-        // 3. LOGIKA KRUSIAL: Generate Snap Token Midtrans
+        // 3. GENERATE SNAP TOKEN UNTUK PELUNASAN (Sisa 50%)
         try {
-            // Memberikan waktu sinkronisasi ke server Midtrans
             sleep(1); 
+            // Karena status sudah completed, MidtransService otomatis ambil remaining_balance
             $snapToken = $midtrans->getSnapToken($order);
-            
-            // Simpan token ke database agar tombol bayar muncul di dashboard customer
             $order->update(['snap_token' => $snapToken]);
-            
-            Log::info("Snap Token Berhasil untuk Order #{$id}: " . $snapToken);
+            Log::info("Snap Token Pelunasan Berhasil untuk Order #{$id}");
         } catch (\Exception $e) {
-            Log::error('Midtrans Error pada Order #' . $id . ': ' . $e->getMessage());
+            Log::error('Midtrans Error Pelunasan: ' . $e->getMessage());
         }
 
-        return redirect()->route('dashboard')->with('success', 'Laporan terkirim & Tagihan telah dibuat!');
+        return redirect()->route('dashboard')->with('success', 'Laporan terkirim & Tagihan pelunasan dibuat!');
     }
 
-    /**
-     * Customer membatalkan pesanan (Hanya jika PENDING)
-     */
-    public function cancelByCustomer($id, FonnteService $fonnte) // Ditambahkan FonnteService
+    public function cancelByCustomer($id, FonnteService $fonnte)
     {
         $order = Order::with('user')->findOrFail($id);
 
@@ -213,19 +214,15 @@ class OrderController extends Controller
             'cancel_notes' => 'Dibatalkan oleh Pelanggan'
         ]);
 
-        // REVISI DOSEN: Notifikasi WA Pembatalan ke Pelanggan
         if ($order->user && !empty($order->user->phone)) {
-            $pesanCancel = "Halo *{$order->user->name}*,\n\nPesanan Anda #{$order->id} telah BERHASIL DIBATALKAN sesuai permintaan Anda. 🙏";
+            $pesanCancel = "Halo *{$order->user->name}*,\n\nPesanan Anda #{$order->id} telah BERHASIL DIBATALKAN. 🙏";
             $fonnte->sendMessage($order->user->phone, $pesanCancel);
         }
 
         return back()->with('success', 'Pesanan berhasil dibatalkan.');
     }
 
-    /**
-     * Admin membatalkan pesanan (Wajib menyertakan alasan)
-     */
-    public function cancelByAdmin(Request $request, $id, FonnteService $fonnte) // Ditambahkan FonnteService
+    public function cancelByAdmin(Request $request, $id, FonnteService $fonnte)
     {
         $request->validate([
             'cancel_notes' => 'required|string|min:5' 
@@ -238,9 +235,8 @@ class OrderController extends Controller
             'cancel_notes' => $request->cancel_notes
         ]);
 
-        // REVISI DOSEN: Notifikasi WA Pembatalan ke Pelanggan (Dari Admin)
         if ($order->user && !empty($order->user->phone)) {
-            $pesanCancelAdmin = "Halo *{$order->user->name}*,\n\nMohon maaf, pesanan Anda #{$order->id} terpaksa DIBATALKAN oleh Admin.\n\nAlasan: *{$request->cancel_notes}*\n\nSilakan pesan kembali di waktu lain. Terima kasih.";
+            $pesanCancelAdmin = "Halo *{$order->user->name}*,\n\nPesanan #{$order->id} DIBATALKAN oleh Admin.\nAlasan: *{$request->cancel_notes}*";
             $fonnte->sendMessage($order->user->phone, $pesanCancelAdmin);
         }
 

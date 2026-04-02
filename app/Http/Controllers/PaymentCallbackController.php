@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Order; 
+use App\Models\User;
+use App\Services\FonnteService;
 use Illuminate\Support\Facades\Log; 
 
 class PaymentCallbackController extends Controller
@@ -18,11 +20,11 @@ class PaymentCallbackController extends Controller
             $orderIdFull = $callback['order_id']; 
             $orderParts = explode('-', $orderIdFull);
             
-            // Ambil ID asli dari database
+            // Ambil ID asli (angka pertama sebelum tanda strip)
             $orderId = $orderParts[0]; 
             
             Log::info("Mencari Order ID: " . $orderId);
-            $order = Order::find($orderId);
+            $order = Order::with(['user', 'services'])->find($orderId);
 
             if (!$order) {
                 Log::error("Order #{$orderId} tidak ditemukan!");
@@ -31,29 +33,50 @@ class PaymentCallbackController extends Controller
 
             $status = $callback['transaction_status'];
 
-            // LOGIKA PEMBAYARAN BERHASIL (Settlement/Capture)
+            // --- LOGIKA PEMBAYARAN BERHASIL (Settlement/Capture) ---
             if ($status == 'settlement' || $status == 'capture') {
                 
-                // 1. Jika ini adalah pembayaran Tahap DP
+                // 1. JIKA INI PEMBAYARAN TAHAP DP (50%)
                 if ($order->payment_step == 'dp') {
                     $order->update([
-                        'payment_status' => 'unpaid', // Tetap unpaid karena baru bayar DP
-                        'payment_step' => 'full',   // Ganti tahap ke Pelunasan (Full)
-                        'snap_token' => null        // Hapus token DP agar nanti bisa generate token baru untuk pelunasan
+                        'payment_status' => 'unpaid', // Masih unpaid karena baru DP
+                        'payment_step' => 'full',   // Naik ke tahap pelunasan
+                        'snap_token' => null        // Hapus token DP agar bisa generate token pelunasan nanti
                     ]);
-                    Log::info("HASIL: DP 50% Order #{$orderId} BERHASIL. Menunggu Pelunasan. ✅");
+
+                    Log::info("HASIL: DP Berhasil untuk Order #{$orderId}. Mengirim Notif ke Admin.");
+
+                    // KIRIM NOTIFIKASI KE ADMIN VIA FONNTE
+                    $fonnte = app(FonnteService::class);
+                    $serviceNames = $order->services->pluck('name')->implode(', ');
+                    
+                    $pesanAdmin = "🚨 *DP TELAH LUNAS (50%)!* 🚨\n\n";
+                    $pesanAdmin .= "Order ID: #{$order->id}\n";
+                    $pesanAdmin .= "👤 Pelanggan: {$order->user->name}\n";
+                    $pesanAdmin .= "🛠️ Layanan: {$serviceNames}\n";
+                    $pesanAdmin .= "💵 Nominal DP: Rp " . number_format($order->dp_amount, 0, ',', '.') . "\n";
+                    $pesanAdmin .= "📅 Jadwal: {$order->booking_date} ({$order->booking_time})\n\n";
+                    $pesanAdmin .= "Pembayaran DP sudah diverifikasi sistem. Silakan tentukan teknisi di Dashboard Admin! 🚀";
+
+                    $admins = User::where('role', 'admin')->get();
+                    foreach ($admins as $admin) {
+                        if (!empty($admin->phone)) {
+                            $fonnte->sendMessage($admin->phone, $pesanAdmin);
+                        }
+                    }
                 } 
                 
-                // 2. Jika ini adalah pembayaran Tahap Pelunasan (Full)
+                // 2. JIKA INI PEMBAYARAN TAHAP PELUNASAN (FULL)
                 else {
                     $order->update([
-                        'payment_status' => 'paid', // Baru di sini status jadi LUNAS (PAID)
+                        'payment_status' => 'paid', // SEKARANG BARU STATUS LUNAS (TOTAL)
+                        'snap_token' => null
                     ]);
-                    Log::info("HASIL: Pelunasan Order #{$orderId} BERHASIL. STATUS: LUNAS TOTAL ✅✅");
+                    Log::info("HASIL: Pelunasan Berhasil untuk Order #{$orderId}. STATUS: PAID ✅");
                 }
             }
 
-            // Tambahan: Jika pembayaran Expired atau Cancel
+            // JIKA PEMBAYARAN EXPIRED/CANCEL
             elseif (in_array($status, ['expire', 'cancel', 'deny'])) {
                 $order->update(['payment_status' => 'failed']);
                 Log::error("HASIL: Pembayaran Order #{$orderId} Gagal/Expired ❌");
@@ -62,7 +85,7 @@ class PaymentCallbackController extends Controller
             return response()->json(['message' => 'Success']);
 
         } catch (\Exception $e) {
-            Log::error('Kritis Error: ' . $e->getMessage());
+            Log::error('Kritis Error pada Callback: ' . $e->getMessage());
             return response()->json(['message' => 'Error'], 500);
         }
     }

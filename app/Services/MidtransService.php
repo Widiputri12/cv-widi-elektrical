@@ -17,33 +17,43 @@ class MidtransService
 
     public function getSnapToken($order)
     {
-        // LOGIKA REVISI DOSEN: Cek apakah bayar DP atau Pelunasan
-        // Jika payment_step adalah 'dp', maka tagih nominal DP (50%)
-        // Jika payment_step adalah 'full', maka tagih sisa pembayaran (50%)
-        
+        // 1. Tentukan nominal berdasarkan tahapan (DP 50% atau Pelunasan 50%)
+        // Kita gunakan (int) untuk memastikan tidak ada angka desimal yang bikin Midtrans Error
         $amountToPay = ($order->payment_step == 'dp') 
-                        ? $order->dp_amount 
-                        : $order->remaining_balance;
+                        ? (int) $order->dp_amount 
+                        : (int) $order->remaining_balance;
+
+        // 2. Jika karena suatu alasan nominalnya 0 (error database), 
+        // kita kasih pengaman agar tidak error saat panggil API Midtrans
+        if ($amountToPay <= 0) {
+            $amountToPay = (int) ($order->total_price * 0.5);
+        }
 
         $params = [
             'transaction_details' => [
-                // Format ID tetap angka-timestamp agar tidak bentrok di Midtrans
-                'order_id' => $order->id . '-' . time(), 
-                'gross_amount' => (int) $amountToPay,
+                // Order ID unik: ID-Step-Timestamp (Contoh: 12-dp-17123456)
+                'order_id' => $order->id . '-' . $order->payment_step . '-' . time(), 
+                'gross_amount' => $amountToPay,
             ],
             'customer_details' => [
                 'first_name' => $order->user->name,
                 'email' => $order->user->email,
                 'phone' => $order->user->phone,
             ],
-            // Tambahkan item_details agar di struk Midtrans terlihat jelas ini pembayaran apa
             'item_details' => [
                 [
-                    'id' => $order->id,
-                    'price' => (int) $amountToPay,
+                    'id' => 'ITEM-' . $order->id,
+                    'price' => $amountToPay,
                     'quantity' => 1,
-                    'name' => ($order->payment_step == 'dp') ? "DP 50% Order #{$order->id}" : "Pelunasan Order #{$order->id}",
+                    'name' => ($order->payment_step == 'dp') 
+                                ? "DP 50% - Order #{$order->id}" 
+                                : "Pelunasan - Order #{$order->id}",
                 ]
+            ],
+            // Opsional: Biar tampilan Midtrans Princess lebih cantik dan profesional
+            'enabled_payments' => [
+                'credit_card', 'gopay', 'shopeepay', 'permata_va', 
+                'bca_va', 'bni_va', 'bri_va', 'other_va'
             ],
         ];
 
