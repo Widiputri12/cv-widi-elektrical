@@ -45,6 +45,10 @@ class OrderController extends Controller
         $totalPrice = $services->sum('price');
         $serviceNames = $services->pluck('name')->implode(', ');
 
+
+        $dpAmount = $totalPrice * 0.5;
+        $remainingBalance = $totalPrice - $dpAmount;
+
         $order = Order::create([
             'user_id' => $user->id,
             'booking_date' => $request->booking_date,
@@ -52,10 +56,12 @@ class OrderController extends Controller
             'address_detail' => $request->address_detail,
             'latitude' => $request->latitude,
             'longitude' => $request->longitude,
-            'notes' => $request->notes,
             'total_price' => $totalPrice,
+            'dp_amount' => $dpAmount, // Simpan nominal DP
+            'remaining_balance' => $remainingBalance, // Simpan sisa pelunasan
             'status' => 'pending',        
             'payment_status' => 'unpaid', 
+            'payment_step' => 'dp', 
         ]);
 
         $order->services()->attach($request->service_ids);

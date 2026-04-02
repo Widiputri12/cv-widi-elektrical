@@ -9,7 +9,6 @@ class MidtransService
 {
     public function __construct()
     {
-        // Pastikan nama di config/services.php atau .env sudah pas
         Config::$serverKey = config('services.midtrans.server_key');
         Config::$isProduction = config('services.midtrans.is_production', false);
         Config::$isSanitized = true;
@@ -18,14 +17,36 @@ class MidtransService
 
     public function getSnapToken($order)
     {
+        // LOGIKA REVISI DOSEN: Cek apakah bayar DP atau Pelunasan
+        // Jika payment_step adalah 'dp', maka tagih nominal DP (50%)
+        // Jika payment_step adalah 'full', maka tagih sisa pembayaran (50%)
+        
+        $amountToPay = ($order->payment_step == 'dp') 
+                        ? $order->dp_amount 
+                        : $order->remaining_balance;
+
         $params = [
             'transaction_details' => [
-                // Kuncinya di sini: hapus string "WIDI-"
+                // Format ID tetap angka-timestamp agar tidak bentrok di Midtrans
                 'order_id' => $order->id . '-' . time(), 
-                'gross_amount' => (int) $order->total_price,
+                'gross_amount' => (int) $amountToPay,
             ],
-            // ... sisa kode lainnya sama
+            'customer_details' => [
+                'first_name' => $order->user->name,
+                'email' => $order->user->email,
+                'phone' => $order->user->phone,
+            ],
+            // Tambahkan item_details agar di struk Midtrans terlihat jelas ini pembayaran apa
+            'item_details' => [
+                [
+                    'id' => $order->id,
+                    'price' => (int) $amountToPay,
+                    'quantity' => 1,
+                    'name' => ($order->payment_step == 'dp') ? "DP 50% Order #{$order->id}" : "Pelunasan Order #{$order->id}",
+                ]
+            ],
         ];
+
         return Snap::getSnapToken($params);
     }
 }

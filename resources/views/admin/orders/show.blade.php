@@ -141,7 +141,7 @@
                             <div class="mt-8 pt-6 border-t-2 border-dashed border-gray-200">
                                 <h4 class="text-[10px] font-black uppercase text-red-600 mb-3 italic">⚠️ Opsi Pembatalan Admin</h4>
                                 
-                                <form action="{{ route('admin.orders.cancel', $order->id) }}" method="POST" onsubmit="return confirm('Yakin ingin membatalkan pesanan ini, Princess?')">
+                                <form action="{{ route('admin.orders.cancel', $order->id) }}" method="POST" onsubmit="return confirm('Yakin ingin membatalkan pesanan ini?')">
                                     @csrf
                                     <label class="block text-[9px] font-black uppercase text-gray-400 mb-1 tracking-widest">Alasan Pembatalan (Wajib):</label>
                                     
