@@ -4,50 +4,59 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Order; 
-use Illuminate\Support\Facades\Log; // Sangat penting untuk cek error
+use App\Models\User; // Tambahkan ini agar bisa cari Admin
+use App\Services\FonnteService; // Tambahkan ini agar bisa kirim WA
+use Illuminate\Support\Facades\Log; 
 
 class PaymentCallbackController extends Controller
 {
-    public function callback(Request $request)
+    // Tambahkan FonnteService $fonnte di sini agar bisa digunakan
+    public function callback(Request $request, FonnteService $fonnte) 
     {
         try {
             $callback = $request->all();
-            
-            // Catat di log agar Princess bisa intip kalau ada masalah
             Log::info("Callback Midtrans Masuk: ", $callback);
 
-            $orderIdFull = $callback['order_id']; // "1-dp-1775230196"
+            $orderIdFull = $callback['order_id']; 
             $orderParts = explode('-', $orderIdFull); 
             $orderId = $orderParts[0]; 
 
-            // Gunakan findOrFail agar kalau ID-nya ngaco, dia langsung stop
-            $order = Order::findOrFail($orderId);
-
+            // Ambil data order beserta usernya
+            $order = Order::with('user')->findOrFail($orderId);
             $status = $callback['transaction_status'];
 
             if ($status == 'settlement' || $status == 'capture') {
                 
-                // CEK APAKAH INI PEMBAYARAN DP ATAU PELUNASAN
-                // Jika pesanan masih 'pending' atau 'unpaid', berarti ini DP
+                // 1. LOGIKA PEMBAYARAN DP
                 if ($order->payment_status == 'unpaid' && $order->payment_step == 'dp') {
                     $order->update([
-                        'payment_status' => 'paid', // Status jadi Lunas DP
-                        'payment_step' => 'full',   // Geser ke tahap Pelunasan
+                        'payment_status' => 'paid',
+                        'payment_step' => 'full',
                         'snap_token' => null        
                     ]);
-                    Log::info("Order #{$orderId} Berhasil Lunas DP! ✅");
+
+                    // --- NOTIFIKASI KE ADMIN VIA WA (OTOMATIS) ---
+                    $admins = User::where('role', 'admin')->get();
+                    $pesanAdmin = "✅ *DP LUNAS! (ORDER #{$order->id})* ✅\n\nPelanggan *{$order->user->name}* baru saja melunasi DP.\n\nAdmin, silakan segera lakukan *PLOTTING TEKNISI* agar pesanan bisa diproses!";
+                    
+                    foreach ($admins as $admin) {
+                        if (!empty($admin->phone)) {
+                            $fonnte->sendMessage($admin->phone, $pesanAdmin);
+                        }
+                    }
+                    Log::info("Order #{$orderId} Lunas DP & Notif Admin Terkirim! ✅");
                 } 
-                // Jika statusnya sudah 'completed', berarti ini PELUNASAN
-                elseif ($order->status == 'completed') {
+                
+                // 2. LOGIKA PEMBAYARAN PELUNASAN
+                elseif ($order->status == 'completed' && $order->payment_status == 'unpaid') {
                     $order->update([
-                        'payment_status' => 'paid', // Lunas Total
+                        'payment_status' => 'paid',
                         'snap_token' => null
                     ]);
-                    Log::info("Order #{$orderId} Berhasil Lunas TOTAL! 💰");
+                    Log::info("Order #{$orderId} Lunas TOTAL! 💰");
                 }
             }
 
-            // WAJIB kasih jawaban 200 ke Midtrans agar email error berhenti
             return response()->json(['message' => 'Success'], 200);
 
         } catch (\Exception $e) {
