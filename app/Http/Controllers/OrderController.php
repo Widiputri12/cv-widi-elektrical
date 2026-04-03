@@ -155,51 +155,64 @@ class OrderController extends Controller
      */
     public function updateFinish(Request $request, $id, MidtransService $midtrans, FonnteService $fonnte) 
     {
+        // 1. Validasi Input Teknisi
         $request->validate([
             'image' => 'required|image|max:10240',
             'category' => 'required',
             'title' => 'required',
         ]);
 
-        $order = Order::with(['user', 'services'])->findOrFail($id);
-
+        // 2. Upload Bukti Pekerjaan ke Galeri
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')->store('proofs', 'public');
-            Gallery::create([
+            \App\Models\Gallery::create([
                 'title' => $request->title,
                 'category' => $request->category,
-                'description' => $request->description ?? 'Pekerjaan selesai oleh ' . Auth::user()->name,
+                'description' => $request->description ?? 'Pekerjaan selesai oleh ' . \Illuminate\Support\Facades\Auth::user()->name,
                 'image_path' => $imagePath,
                 'status' => 'pending',
             ]);
         }
 
-        // 1. Update status pesanan & Reset Teknisi
-        $order->update(['status' => 'completed']);
+        // 3. Ambil Data Order
+        $order = Order::with(['user', 'services'])->findOrFail($id);
 
+        // 4. UPDATE LOGIKA REVISI: Kerja Selesai, Tapi Bayar Belum (Tahap Pelunasan)
+        $order->update([
+            'status' => 'completed',       // Kerja teknisi selesai
+            'payment_status' => 'unpaid',  // Set ke unpaid lagi supaya tombol PELUNASAN muncul
+            'payment_step' => 'full'       // Tandai sekarang masuk ke tahap Pelunasan
+        ]);
+
+        // 5. Reset Status Teknisi (Biar bisa ambil order lain)
         if ($order->technician_id) {
-            User::where('id', $order->technician_id)->update(['is_busy' => 0]);
+            \App\Models\User::where('id', $order->technician_id)->update(['is_busy' => 0]);
         }
 
-        // 2. Kirim Notifikasi WA Selesai
+        // 6. Kirim Notifikasi WA ke Pelanggan
         if ($order->user && !empty($order->user->phone)) {
             $serviceNames = $order->services->pluck('name')->implode(', ');
-            $pesanBayar = "Halo *{$order->user->name}*,\n\nPengerjaan servis *{$serviceNames}* telah SELESAI! ❄️✨\n\nSilakan bayar PELUNASAN di dashboard.\nTerima kasih!";
+            $pesanBayar = "❄️ *KERJA SELESAI!* ❄️\n\nHalo *{$order->user->name}*,\n\nServis *{$serviceNames}* telah diselesaikan oleh teknisi kami.\n\nSilakan lakukan *PELUNASAN SISA 50%* di dashboard agar pesanan dapat ditutup secara resmi.\n\nTerima kasih atas kepercayaannya!";
             $fonnte->sendMessage($order->user->phone, $pesanBayar);
         }
 
-        // 3. GENERATE SNAP TOKEN UNTUK PELUNASAN (Sisa 50%)
+        // 7. GENERATE SNAP TOKEN PELUNASAN (Sisa 50%)
         try {
+            // Berikan jeda 1 detik agar DB tenang
             sleep(1); 
-            // Karena status sudah completed, MidtransService otomatis ambil remaining_balance
+            
+            // MidtransService otomatis mengambil sisa saldo karena status sudah 'completed'
             $snapToken = $midtrans->getSnapToken($order);
-            $order->update(['snap_token' => $snapToken]);
-            Log::info("Snap Token Pelunasan Berhasil untuk Order #{$id}");
+            
+            // Simpan token baru untuk tombol pelunasan di dashboard pelanggan
+            $order->update(['snap_token' => $snapToken]); 
+            
+            \Illuminate\Support\Facades\Log::info("Snap Token Pelunasan Berhasil dibuat untuk Order #{$id}");
         } catch (\Exception $e) {
-            Log::error('Midtrans Error Pelunasan: ' . $e->getMessage());
+            \Illuminate\Support\Facades\Log::error('Gagal Generate Pelunasan: ' . $e->getMessage());
         }
 
-        return redirect()->route('dashboard')->with('success', 'Laporan terkirim & Tagihan pelunasan dibuat!');
+        return redirect()->route('dashboard')->with('success', 'Laporan terkirim! Pelanggan telah dinotifikasi untuk pelunasan.');
     }
 
     public function cancelByCustomer($id, FonnteService $fonnte)

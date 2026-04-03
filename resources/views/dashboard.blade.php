@@ -237,86 +237,87 @@
                             <div class="overflow-y-auto flex-1 space-y-3 pr-1 custom-scrollbar">
 
                             @forelse($myOrders as $order)
-                                <div class="p-4 border-2 rounded-2xl mb-4 shadow-sm 
-                                    @if($order->payment_status == 'paid' && $order->payment_step == 'full' && $order->status == 'completed') bg-blue-50 border-blue-200 
-                                    @elseif($order->status == 'cancelled') bg-red-50 border-red-100 opacity-80 
-                                    @else bg-white border-gray-200 @endif">
-                                    
-                                    <div class="flex justify-between items-center mb-3">
-                                        <span class="text-[8px] font-black uppercase px-2 py-1 rounded bg-gray-100">
-                                            {{ $order->status }}
-                                        </span>
-                                        <span class="text-[8px] font-black uppercase px-2 py-1 rounded 
-                                            @if($order->payment_status == 'paid' && $order->payment_step == 'full' && $order->status == 'completed') bg-blue-600 text-white 
-                                            @elseif($order->payment_status == 'paid') bg-yellow-500 text-white
-                                            @else bg-red-100 text-red-700 @endif">
-                                            @if($order->payment_status == 'paid' && $order->payment_step == 'full' && $order->status == 'completed') LUNAS TOTAL ✅
-                                            @elseif($order->payment_status == 'paid') DP LUNAS (50%) 💳
-                                            @else BELUM BAYAR ❌ @endif
-                                        </span>
-                                    </div>
-
-                                    <h5 class="font-black text-gray-800 text-xs mb-3 uppercase leading-tight">Order #{{ $order->id }} - {{ $order->services->pluck('name')->implode(', ') }}</h5>
-
-                                    <div class="mt-4">
-                                        {{-- 1. JIKA STATUS DIBATALKAN --}}
-                                        @if($order->status == 'cancelled')
-                                            <div class="p-2 bg-white border-2 border-dashed border-red-300 rounded-xl">
-                                                <p class="text-[9px] font-black text-red-600 uppercase mb-1">🚫 PEMBATALAN:</p>
-                                                <p class="text-[10px] text-gray-700 font-bold italic leading-tight">
-                                                    "{{ $order->cancel_notes ?? 'Dibatalkan oleh sistem.' }}"
-                                                </p>
-                                            </div>
-
-                                        {{-- 2. JIKA SUDAH LUNAS TOTAL (STATUS: COMPLETED & PAYMENT STEP: FULL) --}}
-                                        @elseif($order->payment_status == 'paid' && $order->payment_step == 'full' && $order->status == 'completed')
-                                            <p class="text-[9px] text-blue-700 font-black uppercase italic text-center">✅ Terima Kasih! Pesanan Selesai & Lunas Total.</p>
-
-                                        {{-- 3. SUDAH SELESAI KERJA TAPI BELUM PELUNASAN (MENUNGGU PELUNASAN) --}}
-                                        @elseif($order->status == 'completed' && $order->payment_step == 'full' && $order->payment_status == 'unpaid')
-                                             <div class="space-y-2">
-                                                <div class="p-2 bg-orange-50 border border-orange-200 rounded-lg text-center">
-                                                    <p class="text-[9px] font-black text-orange-600 uppercase">🛠️ Pekerjaan Selesai!</p>
-                                                    <p class="text-[8px] text-gray-500 font-bold uppercase tracking-tighter">Silakan lunasi sisa pembayaran (50%)</p>
-                                                </div>
-                                                <button onclick="bayarPesanan('{{ $order->snap_token }}')" class="w-full bg-[#1A1A1A] text-[#FFD700] text-xs font-black py-3 rounded-xl border-2 border-[#1A1A1A] uppercase shadow-[4px_4px_0px_#FFD700]">
-                                                    💳 BAYAR PELUNASAN (50%)
-                                                </button>
-                                             </div>
-
-                                        {{-- 4. BELUM BAYAR DP --}}
-                                        @elseif($order->payment_status == 'unpaid' && $order->payment_step == 'dp')
-                                            @if($order->snap_token)
-                                                <button onclick="bayarPesanan('{{ $order->snap_token }}')" class="w-full bg-[#FFD700] text-[#1A1A1A] text-xs font-black py-3 rounded-xl border-2 border-[#1A1A1A] uppercase shadow-[4px_4px_0px_#1A1A1A] animate-bounce">
-                                                    💳 BAYAR DP 50% SEKARANG
-                                                </button>
-                                            @else
-                                                <div class="p-2 bg-gray-50 border-2 border-dashed border-gray-300 rounded-xl text-center">
-                                                    <p class="text-[9px] text-gray-500 font-bold uppercase">🔄 Menyiapkan Link Pembayaran...</p>
-                                                </div>
-                                            @endif
-                                            
-                                            <form action="{{ route('orders.cancel', $order->id) }}" method="POST" class="mt-2" onsubmit="return confirm('Apakah Princess yakin ingin membatalkan pesanan ini?')">
-                                                @csrf
-                                                <button type="submit" class="w-full bg-white text-red-600 text-[9px] font-black py-2 rounded-lg border-2 border-red-600 uppercase hover:bg-red-50 transition-all">
-                                                    ❌ Batalkan Pesanan
-                                                </button>
-                                            </form>
-
-                                        {{-- 5. SUDAH DP, MENUNGGU KONFIRMASI --}}
-                                        @elseif($order->payment_status == 'paid' && $order->status == 'pending')
-                                            <div class="p-3 bg-yellow-50 border-2 border-dashed border-yellow-300 rounded-xl text-center">
-                                                <p class="text-[9px] text-yellow-700 font-black uppercase animate-pulse">⏳ DP Sukses! Menunggu Admin...</p>
-                                            </div>
-
-                                        {{-- 6. TEKNISI SEDANG JALAN --}}
-                                        @elseif($order->payment_status == 'paid' && ($order->status == 'confirmed' || $order->status == 'process'))
-                                            <div class="p-3 bg-green-50 border-2 border-green-200 rounded-xl text-center">
-                                                <p class="text-[9px] text-green-700 font-black uppercase italic">🛠️ Teknisi Menuju Lokasi Anda.</p>
-                                            </div>
+                            <div class="p-4 border-2 rounded-2xl mb-4 shadow-sm 
+                                @if($order->payment_status == 'paid' && $order->payment_step == 'full' && $order->status == 'completed') bg-blue-50 border-blue-200 
+                                @elseif($order->status == 'cancelled') bg-red-50 border-red-100 opacity-80 
+                                @else bg-white border-gray-200 @endif">
+                                
+                                <div class="flex justify-between items-center mb-3">
+                                    <span class="text-[8px] font-black uppercase px-2 py-1 rounded bg-gray-100">
+                                        {{ $order->status }}
+                                    </span>
+                                    <span class="text-[8px] font-black uppercase px-2 py-1 rounded 
+                                        @if($order->payment_status == 'paid' && $order->payment_step == 'full' && $order->status == 'completed') bg-blue-600 text-white 
+                                        @elseif($order->status == 'completed' && $order->payment_status == 'unpaid') bg-orange-500 text-white
+                                        @elseif($order->payment_status == 'paid') bg-yellow-500 text-white
+                                        @else bg-red-100 text-red-700 @endif">
+                                        
+                                        @if($order->payment_status == 'paid' && $order->payment_step == 'full' && $order->status == 'completed') 
+                                            LUNAS TOTAL ✅
+                                        @elseif($order->status == 'completed' && $order->payment_status == 'unpaid')
+                                            PELUNASAN 💳
+                                        @elseif($order->payment_status == 'paid') 
+                                            DP LUNAS (50%) 💳
+                                        @else 
+                                            BELUM BAYAR ❌ 
                                         @endif
-                                    </div>
+                                    </span>
                                 </div>
+
+                                <h5 class="font-black text-gray-800 text-xs mb-3 uppercase leading-tight">Order #{{ $order->id }} - {{ $order->services->pluck('name')->implode(', ') }}</h5>
+
+                                <div class="mt-4">
+                                    {{-- 1. JIKA STATUS DIBATALKAN --}}
+                                    @if($order->status == 'cancelled')
+                                        <div class="p-2 bg-white border-2 border-dashed border-red-300 rounded-xl">
+                                            <p class="text-[9px] font-black text-red-600 uppercase mb-1">🚫 PEMBATALAN:</p>
+                                            <p class="text-[10px] text-gray-700 font-bold italic leading-tight">
+                                                "{{ $order->cancel_notes ?? 'Dibatalkan oleh sistem.' }}"
+                                            </p>
+                                        </div>
+
+                                    {{-- 2. JIKA SUDAH SELESAI KERJA TAPI BELUM PELUNASAN (PRIORITAS PERTAMA SETELAH SELESAI) --}}
+                                    @elseif($order->status == 'completed' && $order->payment_status == 'unpaid')
+                                        <div class="space-y-3">
+                                            <div class="p-3 bg-orange-50 border-2 border-dashed border-orange-300 rounded-2xl text-center">
+                                                <p class="text-[10px] font-black text-orange-600 uppercase animate-pulse">🛠️ Pekerjaan Telah Selesai!</p>
+                                                <p class="text-[9px] text-gray-500 font-bold uppercase tracking-tight">Silakan selesaikan PELUNASAN (Sisa 50%)</p>
+                                            </div>
+                                            <button onclick="bayarPesanan('{{ $order->snap_token }}')" class="w-full bg-[#1A1A1A] text-[#FFD700] text-xs font-black py-4 rounded-2xl shadow-[4px_4px_0px_#FFD700] border-2 border-[#1A1A1A] uppercase tracking-widest transition-all">
+                                                💳 BAYAR PELUNASAN SEKARANG
+                                            </button>
+                                        </div>
+
+                                    {{-- 3. JIKA SUDAH LUNAS TOTAL --}}
+                                    @elseif($order->status == 'completed' && $order->payment_status == 'paid' && $order->payment_step == 'full')
+                                        <div class="p-4 bg-blue-50 border-2 border-blue-200 rounded-2xl text-center">
+                                            <p class="text-[9px] text-blue-700 font-black uppercase italic">✅ Terima Kasih! Pesanan Selesai & Lunas Total.</p>
+                                        </div>
+
+                                    {{-- 4. BELUM BAYAR DP --}}
+                                    @elseif($order->payment_status == 'unpaid' && $order->payment_step == 'dp')
+                                        @if($order->snap_token)
+                                            <button onclick="bayarPesanan('{{ $order->snap_token }}')" class="w-full bg-[#FFD700] text-[#1A1A1A] text-xs font-black py-3 rounded-xl border-2 border-[#1A1A1A] uppercase shadow-[4px_4px_0px_#1A1A1A] animate-bounce">
+                                                💳 BAYAR DP 50% SEKARANG
+                                            </button>
+                                        @endif
+                                        <form action="{{ route('orders.cancel', $order->id) }}" method="POST" class="mt-2" onsubmit="return confirm('Yakin ingin membatalkan?')">
+                                            @csrf
+                                            <button type="submit" class="w-full bg-white text-red-600 text-[9px] font-black py-2 rounded-lg border-2 border-red-600 uppercase">❌ Batalkan Pesanan</button>
+                                        </form>
+
+                                    {{-- 5. SUDAH DP, MENUNGGU KONFIRMASI/TEKNISI --}}
+                                    @elseif($order->payment_status == 'paid' && $order->status == 'pending')
+                                        <div class="p-3 bg-yellow-50 border-2 border-dashed border-yellow-300 rounded-xl text-center">
+                                            <p class="text-[9px] text-yellow-700 font-black uppercase animate-pulse">⏳ DP Sukses! Menunggu Admin...</p>
+                                        </div>
+                                    @elseif($order->payment_status == 'paid' && ($order->status == 'confirmed' || $order->status == 'process'))
+                                        <div class="p-3 bg-green-50 border-2 border-green-200 rounded-xl text-center">
+                                            <p class="text-[9px] text-green-700 font-black uppercase italic">🛠️ Teknisi Menuju Lokasi Anda.</p>
+                                        </div>
+                                    @endif
+                                </div>
+                            </div>
                             @empty
                                 <p class="text-xs font-bold text-center mt-10 text-gray-400 italic">Belum ada pesanan</p>
                             @endforelse
