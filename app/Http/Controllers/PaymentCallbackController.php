@@ -27,7 +27,7 @@ class PaymentCallbackController extends Controller
 
             if ($status == 'settlement' || $status == 'capture') {
                 
-                // 1. LOGIKA PEMBAYARAN DP
+                // --- KONDISI 1: PEMBAYARAN DP ---
                 if ($order->payment_status == 'unpaid' && $order->payment_step == 'dp') {
                     $order->update([
                         'payment_status' => 'paid',
@@ -35,25 +35,26 @@ class PaymentCallbackController extends Controller
                         'snap_token' => null        
                     ]);
 
-                    // --- NOTIFIKASI KE ADMIN VIA WA (OTOMATIS) ---
-                    $admins = User::where('role', 'admin')->get();
-                    $pesanAdmin = "✅ *DP LUNAS! (ORDER #{$order->id})* ✅\n\nPelanggan *{$order->user->name}* baru saja melunasi DP.\n\nAdmin, silakan segera lakukan *PLOTTING TEKNISI* agar pesanan bisa diproses!";
-                    
-                    foreach ($admins as $admin) {
-                        if (!empty($admin->phone)) {
-                            $fonnte->sendMessage($admin->phone, $pesanAdmin);
-                        }
-                    }
-                    Log::info("Order #{$orderId} Lunas DP & Notif Admin Terkirim! ✅");
+                    $pesanAdmin = "✅ *DP TELAH DIBAYAR!* ✅\n\nOrder #{$order->id}\nPelanggan: *{$order->user->name}*\n\nAdmin, silakan cek dashboard untuk melakukan *PLOTTING TEKNISI*.";
+                    $this->sendToAdmins($fonnte, $pesanAdmin);
                 } 
                 
-                // 2. LOGIKA PEMBAYARAN PELUNASAN
+                // --- KONDISI 2: PEMBAYARAN PELUNASAN ---
                 elseif ($order->status == 'completed' && $order->payment_status == 'unpaid') {
                     $order->update([
                         'payment_status' => 'paid',
                         'snap_token' => null
                     ]);
-                    Log::info("Order #{$orderId} Lunas TOTAL! 💰");
+
+                    // Notif ke Admin
+                    $pesanAdmin = "💰 *PELUNASAN BERHASIL!* 💰\n\nOrder #{$order->id} ({$order->user->name}) telah melunasi sisa pembayaran.\nStatus pesanan: *LUNAS TOTAL*.";
+                    $this->sendToAdmins($fonnte, $pesanAdmin);
+
+                    // Notif ke Pelanggan (Terima Kasih)
+                    if ($order->user && !empty($order->user->phone)) {
+                        $pesanCustomer = "🎉 *PEMBAYARAN BERHASIL!* 🎉\n\nHalo *{$order->user->name}*,\n\nTerima kasih, pelunasan untuk Order #{$order->id} telah kami terima.\n\n*Pesanan Anda kini telah LUNAS TOTAL.*\nTerima kasih telah menggunakan jasa CV. WIDI ELEKTRICAL. Semoga AC Anda tetap dingin! ❄️✨";
+                        $fonnte->sendMessage($order->user->phone, $pesanCustomer);
+                    }
                 }
             }
 
@@ -64,4 +65,15 @@ class PaymentCallbackController extends Controller
             return response()->json(['message' => $e->getMessage()], 500);
         }
     }
+
+    // Tambahkan helper function ini di bawah class (agar kode rapi)
+    private function sendToAdmins($fonnte, $message) {
+        $admins = \App\Models\User::where('role', 'admin')->get();
+        foreach ($admins as $admin) {
+            if (!empty($admin->phone)) {
+                $fonnte->sendMessage($admin->phone, $message);
+            }
+        }
+    }
 }
+

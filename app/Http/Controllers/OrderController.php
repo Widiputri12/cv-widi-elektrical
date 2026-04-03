@@ -217,42 +217,55 @@ class OrderController extends Controller
 
     public function cancelByCustomer($id, FonnteService $fonnte)
     {
-        $order = Order::findOrFail($id);
+        $order = Order::with('user')->findOrFail($id);
 
-            // Keamanan: Pelanggan tidak boleh cancel jika sudah dikonfirmasi admin/teknisi
-            if ($order->status !== 'pending') {
-                return back()->with('error', 'Pesanan sudah diproses, tidak bisa dibatalkan sendiri.');
-            }
-
-            $order->update([
-                'status' => 'cancelled',
-                'cancel_notes' => 'Dibatalkan oleh Pelanggan'
-            ]);
-
-            return back()->with('success', 'Pesanan berhasil Anda batalkan.');
+        if ($order->status !== 'pending') {
+            return back()->with('error', 'Pesanan sudah diproses, tidak bisa dibatalkan.');
         }
 
-    public function cancelByAdmin(Request $request, $id, FonnteService $fonnte) 
-    {
-        $request->validate([
-            'cancel_notes' => 'required|string|min:5'
+        $order->update([
+            'status' => 'cancelled',
+            'cancel_notes' => 'Dibatalkan oleh Pelanggan'
         ]);
 
-        // Pakai with('user') agar data pelanggan ikut terbawa untuk kirim WA
+        // NOTIF KE ADMIN: Pelanggan membatalkan pesanan
+        $pesanAdmin = "⚠️ *PESANAN DIBATALKAN PELANGGAN* ⚠️\n\nHalo Admin, Pelanggan *{$order->user->name}* telah membatalkan pesanan #{$order->id} secara mandiri.";
+        $this->sendToAdmins($fonnte, $pesanAdmin); // Gunakan helper sendToAdmins tadi
+
+        return back()->with('success', 'Pesanan berhasil Anda batalkan.');
+    }
+
+    public function cancelByAdmin(Request $request, $id, FonnteService $fonnte)
+    {
+        $request->validate(['cancel_notes' => 'required|string|min:5']);
         $order = Order::with('user')->findOrFail($id);
-        
+
+        // PROTEKSI: Jika sudah DP (payment_status == paid), Admin dilarang cancel!
+        if ($order->payment_status === 'paid') {
+            return back()->with('error', 'Gagal! Pesanan yang sudah dibayar DP-nya tidak dapat dibatalkan.');
+        }
+
         $order->update([
             'status' => 'cancelled',
             'cancel_notes' => $request->cancel_notes
         ]);
 
-        // Kirim WA Notifikasi ke pelanggan
+        // NOTIF KE PELANGGAN: Disertai catatan admin
         if ($order->user && !empty($order->user->phone)) {
-            $pesan = "🚨 *PESANAN DIBATALKAN ADMIN* 🚨\n\nHalo *{$order->user->name}*,\n\nPesanan #{$order->id} telah DIBATALKAN oleh Admin CV Widi.\nAlasan: *{$request->cancel_notes}*\n\nMohon maaf atas ketidaknyamanannya.";
+            $pesan = "Halo *{$order->user->name}*,\n\nMohon maaf, pesanan #{$order->id} Anda *DIBATALKAN* oleh Admin CV Widi.\n\n*Catatan Admin:* \"{$request->cancel_notes}\"\n\nSilakan hubungi kami jika ada pertanyaan.";
             $fonnte->sendMessage($order->user->phone, $pesan);
         }
 
-        // Redirect ke dashboard admin agar tampilan langsung berubah
-        return redirect()->route('dashboard')->with('success', 'Pesanan #'.$id.' berhasil dibatalkan dan notifikasi WA terkirim!');
+        return redirect()->route('dashboard')->with('success', 'Pesanan berhasil dibatalkan dan notifikasi WA terkirim.');
+    }
+
+    // Tambahkan helper function ini di bawah class (agar kode rapi)
+    private function sendToAdmins($fonnte, $message) {
+        $admins = \App\Models\User::where('role', 'admin')->get();
+        foreach ($admins as $admin) {
+            if (!empty($admin->phone)) {
+                $fonnte->sendMessage($admin->phone, $message);
+            }
+        }
     }
 }
