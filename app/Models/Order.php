@@ -12,7 +12,8 @@ class Order extends Model
     protected $fillable = [
         'user_id', 'technician_id', 'booking_date', 'booking_time', 
         'notes', 'address_detail', 'latitude', 'longitude', 
-        'status', 'total_price', 'payment_status', 'snap_token', 'cancel_notes'
+        'status', 'total_price', 'payment_status', 'snap_token', 'cancel_notes',
+        'dp_amount', 'remaining_balance', 'payment_step' 
     ];
 
     public function services()

@@ -14,7 +14,8 @@ use App\Http\Controllers\PaymentCallbackController;
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/galeri', [GalleryController::class, 'index'])->name('gallery.index');
 
-Route::post('/payment/callback', [PaymentCallbackController::class, 'callback'])->name('payment.callback');
+Route::post('/payment/callback', [PaymentCallbackController::class, 'callback']);
+
 // --- 2. AUTHENTICATED ACCESS (LBS ECOSYSTEM) ---
 Route::middleware(['auth'])->group(function () {
 
@@ -48,8 +49,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelByCustomer'])->name('orders.cancel');
 
     // Rute untuk Admin meng-cancel (dengan catatan)
-    Route::post('/admin/orders/{id}/cancel', [OrderController::class, 'cancelByAdmin'])->name('admin.orders.cancel');
-
+    Route::put('/admin/orders/{id}/cancel', [OrderController::class, 'cancelByAdmin'])->name('admin.orders.cancel');
 });
 
 // --- 3. ADMIN MANAGEMENT (LBS MONITORING) ---

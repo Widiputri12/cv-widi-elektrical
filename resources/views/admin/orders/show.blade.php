@@ -40,13 +40,14 @@
                                             {{ $svc->name }}
                                         </span>
                                     @empty
-                                        <span class="text-red-500 font-bold">Data layanan kosong</span>
+                                        <span class="text-red-500 font-bold text-xs">Data layanan kosong</span>
                                     @endforelse
                                 </div>
                             </div>
                             <div>
-                                <p class="text-gray-400 text-[10px] font-black uppercase tracking-widest">Total Harga</p>
+                                <p class="text-gray-400 text-[10px] font-black uppercase tracking-widest">Total Harga (Tagihan)</p>
                                 <p class="font-black text-2xl text-[#D92323]">Rp {{ number_format($order->total_price, 0, ',', '.') }}</p>
+                                <p class="text-[9px] font-bold text-gray-500 italic uppercase">Wajib DP: Rp {{ number_format($order->total_price * 0.5, 0, ',', '.') }}</p>
                             </div>
                         </div>
                     </div>
@@ -72,7 +73,7 @@
                     </div>
                 </div>
 
-                {{-- SEKSI KANAN: STATUS PENUGASAN & PEMBATALAN (REVISI DOSEN) --}}
+                {{-- SEKSI KANAN: STATUS PENUGASAN & PEMBATALAN --}}
                 <div class="md:col-span-1">
                     
                     {{-- 1. JIKA ORDER SUDAH SELESAI --}}
@@ -82,9 +83,9 @@
                                 <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="4" d="M5 13l4 4L19 7"></path></svg>
                             </div>
                             <h3 class="font-black text-2xl uppercase mb-2">Tugas Selesai</h3>
-                            <div class="bg-gray-50 border-2 border-[#1A1A1A] p-4 rounded-2xl mb-6">
+                            <div class="bg-gray-50 border-2 border-[#1A1A1A] p-4 rounded-2xl">
                                 <p class="font-black text-[#1A1A1A] text-lg">{{ $order->technician->name ?? 'Teknisi' }}</p>
-                                <p class="text-[9px] font-bold text-green-600 uppercase">Status: Tersedia Kembali ✅</p>
+                                <p class="text-[9px] font-bold text-green-600 uppercase">Status: Lunas & Terverifikasi ✅</p>
                             </div>
                         </div>
 
@@ -97,69 +98,83 @@
                             <h3 class="font-black text-xl uppercase mb-2">Dibatalkan</h3>
                             <div class="p-4 bg-gray-50 border-2 border-dashed border-red-300 rounded-2xl italic">
                                 <p class="text-[10px] font-black text-gray-400 uppercase mb-1">Catatan Pembatalan:</p>
-                                <p class="text-xs font-bold text-red-600">"{{ $order->cancel_notes }}"</p>
+                                <p class="text-xs font-bold text-red-600">"{{ $order->cancel_notes ?? 'Dibatalkan oleh sistem.' }}"</p>
                             </div>
                         </div>
 
-                    {{-- 3. JIKA ORDER PENDING/PROSES (FORM PLOTTING & CANCEL) --}}
+                    {{-- 3. JIKA ORDER PENDING/PROSES (FORM PLOTTING ATAU STATUS JALAN) --}}
                     @else
                         <div class="bg-white rounded-3xl border-4 border-[#1A1A1A] shadow-[8px_8px_0px_#FFD700] p-8 sticky top-10">
-                            <h3 class="font-black text-xl uppercase mb-6 text-center italic underline decoration-[#D92323] decoration-4 underline-offset-4">Plotting Teknisi</h3>
                             
-                            {{-- FORM PLOTTING TEKNISI --}}
-                            <form action="{{ route('admin.orders.assign', $order->id) }}" method="POST">
-                                @csrf
-                                @method('PUT')
-                                <div class="space-y-6">
-                                    <div>
-                                        <label class="block text-[10px] font-black uppercase text-gray-500 mb-2 italic tracking-widest">Pilih Personel Ready:</label>
-                                        <select name="technician_id" required class="w-full border-4 border-[#1A1A1A] rounded-2xl p-4 font-black text-sm focus:ring-0 focus:border-[#D92323] appearance-none cursor-pointer bg-white">
-                                            <option value="" disabled selected>-- PILIH TEKNISI --</option>
-                                            @foreach($technicians as $tech)
-                                                <option value="{{ $tech->id }}" {{ $tech->is_busy ? 'disabled' : '' }} class="{{ $tech->is_busy ? 'text-red-400' : 'text-green-600 font-black' }}">
-                                                    {{ $tech->name }} {{ $tech->is_busy ? ' (BUSY 🛠️)' : ' (READY ✅)' }}
-                                                </option>
-                                            @endforeach
-                                        </select>
-                                    </div>
+                            {{-- JIKA STATUS MASIH PENDING (BELUM ADA TEKNISI) --}}
+                            @if($order->status == 'pending')
+                                
+                                {{-- PROTEKSI: HANYA BISA PLOTTING JIKA DP SUDAH PAID --}}
+                                @if($order->payment_status === 'paid')
+                                    <h3 class="font-black text-xl uppercase mb-6 text-center italic underline decoration-[#D92323] decoration-4 underline-offset-4">Plotting Teknisi</h3>
+                                    
+                                    <form action="{{ route('admin.orders.assign', $order->id) }}" method="POST">
+                                        @csrf
+                                        @method('PUT')
+                                        <div class="space-y-6">
+                                            <div>
+                                                <label class="block text-[10px] font-black uppercase text-gray-500 mb-2 italic tracking-widest">Pilih Personel Ready:</label>
+                                                <select name="technician_id" required class="w-full border-4 border-[#1A1A1A] rounded-2xl p-4 font-black text-sm focus:ring-0 focus:border-[#D92323] appearance-none cursor-pointer bg-white">
+                                                    <option value="" disabled selected>-- PILIH TEKNISI --</option>
+                                                    @foreach($technicians as $tech)
+                                                        <option value="{{ $tech->id }}" {{ $tech->is_busy ? 'disabled' : '' }} class="{{ $tech->is_busy ? 'text-red-400' : 'text-green-600 font-black' }}">
+                                                            {{ $tech->name }} {{ $tech->is_busy ? ' (BUSY 🛠️)' : ' (READY ✅)' }}
+                                                        </option>
+                                                    @endforeach
+                                                </select>
+                                            </div>
 
-                                    <div class="bg-[#F9FAFB] p-4 rounded-2xl border-2 border-dashed border-gray-300">
-                                        <p class="text-[9px] font-black text-gray-400 uppercase text-center mb-1">Jadwal Kedatangan</p>
-                                        <p class="font-black text-center text-[#1A1A1A] uppercase">
-                                            {{ date('d M Y', strtotime($order->booking_date)) }} <br>
-                                            <span class="text-[#D92323]">JAM {{ $order->booking_time }}</span>
+                                            <button type="submit" class="w-full bg-[#1A1A1A] text-white font-black py-5 rounded-2xl shadow-[4px_4px_0px_#D92323] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all uppercase tracking-widest text-xs">
+                                                🚀 Konfirmasi Penugasan
+                                            </button>
+                                        </div>
+                                    </form>
+                                @else
+                                    {{-- Tampilan jika DP belum dibayar --}}
+                                    <div class="text-center py-6">
+                                        <div class="text-4xl mb-4 animate-pulse">💳</div>
+                                        <h3 class="font-black text-lg uppercase text-red-600">Menunggu DP</h3>
+                                        <p class="text-[10px] font-bold text-gray-500 uppercase px-4 mt-2">
+                                            Tombol plotting terkunci. Tunggu pelanggan bayar DP 50%.
                                         </p>
                                     </div>
+                                @endif
 
-                                    <button type="submit" class="w-full bg-[#1A1A1A] text-white font-black py-5 rounded-2xl shadow-[4px_4px_0px_#D92323] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all uppercase tracking-widest text-xs">
-                                        🚀 Konfirmasi Penugasan
-                                    </button>
+                            {{-- JIKA STATUS SUDAH CONFIRMED/WORKING (TEKNISI SUDAH DIPILIH) --}}
+                            @elseif($order->status == 'confirmed' || $order->status == 'working')
+                                <div class="text-center py-4">
+                                    <div class="w-20 h-20 bg-blue-50 text-blue-600 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-[#1A1A1A] animate-bounce">
+                                        <svg class="w-10 h-10" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M17.657 16.657L13.414 20.9a1.998 1.998 0 01-2.827 0l-4.244-4.243a8 8 0 1111.314 0z"></path><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M15 11a3 3 0 11-6 0 3 3 0 016 0z"></path></svg>
+                                    </div>
+                                    <h3 class="font-black text-xl uppercase mb-2">Teknisi Meluncur</h3>
+                                    <div class="bg-blue-50 border-2 border-blue-200 p-4 rounded-2xl mb-4">
+                                        <p class="text-[10px] font-black text-gray-400 uppercase mb-1">Personel Bertugas:</p>
+                                        <p class="font-black text-[#1A1A1A] text-lg uppercase">{{ $order->technician->name }}</p>
+                                        <p class="text-[9px] font-bold text-blue-600 mt-1 uppercase tracking-tighter italic">Sedang Menuju Lokasi Pelanggan...</p>
+                                    </div>
                                 </div>
-                            </form>
+                            @endif
 
-                            {{-- REVISI DOSEN: FITUR PEMBATALAN ADMIN (DENGAN FORM TERTUTUP) --}}
+                            {{-- FITUR PEMBATALAN ADMIN (TETAP ADA DI BAWAH) --}}
                             <div class="mt-8 pt-6 border-t-2 border-dashed border-gray-200">
                                 <h4 class="text-[10px] font-black uppercase text-red-600 mb-3 italic">⚠️ Opsi Pembatalan Admin</h4>
-                                
                                 <form action="{{ route('admin.orders.cancel', $order->id) }}" method="POST" onsubmit="return confirm('Yakin ingin membatalkan pesanan ini?')">
                                     @csrf
+                                    @method('PUT')
                                     <label class="block text-[9px] font-black uppercase text-gray-400 mb-1 tracking-widest">Alasan Pembatalan (Wajib):</label>
-                                    
-                                    {{-- Atribut name="cancel_notes" sangat krusial di sini --}}
-                                    <textarea name="cancel_notes" 
-                                        class="w-full border-2 border-gray-200 rounded-xl p-3 text-[11px] font-bold focus:border-red-500 focus:ring-0 placeholder:text-gray-300 transition-all" 
-                                        placeholder="Tulis alasan di sini..." 
-                                        required></textarea>
+                                    <textarea name="cancel_notes" required class="w-full border-2 border-gray-200 rounded-xl p-3 text-[11px] font-bold focus:border-red-500 focus:ring-0 placeholder:text-gray-300 transition-all" placeholder="Tulis alasan di sini..."></textarea>
                                     
                                     <button type="submit" class="w-full mt-3 bg-white text-red-600 border-2 border-red-600 px-4 py-2 rounded-xl text-[10px] font-black uppercase hover:bg-red-50 transition-all">
                                         🚫 Batalkan Pesanan
                                     </button>
-                                </form> {{-- PENUTUP FORM DITAMBAHKAN --}}
+                                </form>
                             </div>
 
-                            <p class="mt-6 text-[9px] text-center font-bold text-gray-400 uppercase italic leading-none">
-                                *Hanya teknisi dengan status (Ready) yang dapat dipilih sistem LBS.
-                            </p>
                         </div>
                     @endif
                 </div>
@@ -171,8 +186,8 @@
     {{-- SCRIPT PETA LBS --}}
     <script>
         document.addEventListener('DOMContentLoaded', function() {
-            var lat = {{ $order->latitude ?? -7.2504 }};
-            var lng = {{ $order->longitude ?? 112.7688 }};
+            var lat = {{ $order->latitude ?? -7.818838 }};
+            var lng = {{ $order->longitude ?? 112.012563 }};
             
             if (typeof L !== 'undefined') {
                 var map = L.map('map', { scrollWheelZoom: false }).setView([lat, lng], 16);

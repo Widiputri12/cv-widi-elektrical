@@ -68,11 +68,12 @@ class OrderController extends Controller
 
         // GENERATE TOKEN DP SEKARANG (Agar tombol bayar langsung muncul)
         try {
-            $snapToken = $midtrans->getSnapToken($order);
-            $order->update(['snap_token' => $snapToken]);
-            Log::info("Snap Token DP Berhasil untuk Order #{$order->id}");
+            $snapToken = $midtrans->getSnapToken($order); //
+            // PASTIKAN BARIS INI ADA:
+            $order->update(['snap_token' => $snapToken]); //
+            Log::info("Snap Token DP Berhasil: " . $snapToken); //
         } catch (\Exception $e) {
-            Log::error('Gagal buat token DP saat store: ' . $e->getMessage());
+            Log::error('Gagal buat token DP: ' . $e->getMessage()); //
         }
 
         // Catatan: Notifikasi ke Admin via Fonnte sebaiknya di Callback 
@@ -203,31 +204,28 @@ class OrderController extends Controller
 
     public function cancelByCustomer($id, FonnteService $fonnte)
     {
-        $order = Order::with('user')->findOrFail($id);
+        $order = Order::findOrFail($id);
 
-        if ($order->status !== 'pending') {
-            return back()->with('error', 'Maaf Princess, pesanan sudah diproses dan tidak bisa dibatalkan.');
+            // Keamanan: Pelanggan tidak boleh cancel jika sudah dikonfirmasi admin/teknisi
+            if ($order->status !== 'pending') {
+                return back()->with('error', 'Pesanan sudah diproses, tidak bisa dibatalkan sendiri.');
+            }
+
+            $order->update([
+                'status' => 'cancelled',
+                'cancel_notes' => 'Dibatalkan oleh Pelanggan'
+            ]);
+
+            return back()->with('success', 'Pesanan berhasil Anda batalkan.');
         }
 
-        $order->update([
-            'status' => 'cancelled',
-            'cancel_notes' => 'Dibatalkan oleh Pelanggan'
-        ]);
-
-        if ($order->user && !empty($order->user->phone)) {
-            $pesanCancel = "Halo *{$order->user->name}*,\n\nPesanan Anda #{$order->id} telah BERHASIL DIBATALKAN. 🙏";
-            $fonnte->sendMessage($order->user->phone, $pesanCancel);
-        }
-
-        return back()->with('success', 'Pesanan berhasil dibatalkan.');
-    }
-
-    public function cancelByAdmin(Request $request, $id, FonnteService $fonnte)
+    public function cancelByAdmin(Request $request, $id, FonnteService $fonnte) 
     {
         $request->validate([
-            'cancel_notes' => 'required|string|min:5' 
+            'cancel_notes' => 'required|string|min:5'
         ]);
 
+        // Pakai with('user') agar data pelanggan ikut terbawa untuk kirim WA
         $order = Order::with('user')->findOrFail($id);
         
         $order->update([
@@ -235,11 +233,13 @@ class OrderController extends Controller
             'cancel_notes' => $request->cancel_notes
         ]);
 
+        // Kirim WA Notifikasi ke pelanggan
         if ($order->user && !empty($order->user->phone)) {
-            $pesanCancelAdmin = "Halo *{$order->user->name}*,\n\nPesanan #{$order->id} DIBATALKAN oleh Admin.\nAlasan: *{$request->cancel_notes}*";
-            $fonnte->sendMessage($order->user->phone, $pesanCancelAdmin);
+            $pesan = "🚨 *PESANAN DIBATALKAN ADMIN* 🚨\n\nHalo *{$order->user->name}*,\n\nPesanan #{$order->id} telah DIBATALKAN oleh Admin CV Widi.\nAlasan: *{$request->cancel_notes}*\n\nMohon maaf atas ketidaknyamanannya.";
+            $fonnte->sendMessage($order->user->phone, $pesan);
         }
 
-        return back()->with('success', 'Pesanan telah dibatalkan oleh Admin.');
+        // Redirect ke dashboard admin agar tampilan langsung berubah
+        return redirect()->route('dashboard')->with('success', 'Pesanan #'.$id.' berhasil dibatalkan dan notifikasi WA terkirim!');
     }
 }
