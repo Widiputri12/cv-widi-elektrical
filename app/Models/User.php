@@ -6,6 +6,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany; // Tambahkan ini
 
 class User extends Authenticatable
 {
@@ -23,7 +24,8 @@ class User extends Authenticatable
         'password',
         'phone',   
         'address',  
-        'role',    
+        'role',
+        'is_busy', // Tambahkan is_busy agar bisa ditandai sedang kerja
     ];
 
     /**
@@ -47,5 +49,14 @@ class User extends Authenticatable
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
         ];
+    }
+
+    /**
+     * Relasi Many-to-Many ke Pesanan
+     * Seorang teknisi bisa memiliki banyak tugas pesanan
+     */
+    public function assignedOrders(): BelongsToMany
+    {
+        return $this->belongsToMany(Order::class, 'order_user');
     }
 }

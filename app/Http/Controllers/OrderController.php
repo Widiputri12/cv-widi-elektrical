@@ -102,7 +102,7 @@ class OrderController extends Controller
      */
     public function show($id)
     {
-        $order = Order::with(['user', 'services', 'technician'])->findOrFail($id);
+        $order = Order::with(['user', 'services', 'technicians'])->findOrFail($id);
         $technicians = User::where('role', 'technician')->get();
         
         return view('admin.orders.show', compact('order', 'technicians'));
@@ -113,32 +113,49 @@ class OrderController extends Controller
      */
     public function assignTechnician(Request $request, $id, FonnteService $fonnte)
     {
-        $request->validate(['technician_id' => 'required|exists:users,id']);
-
-        $order = Order::findOrFail($id);
-        
-        $order->update([
-            'technician_id' => $request->technician_id,
-            'status' => 'confirmed', 
+        // 1. Validasi Input: Pastikan ada minimal 1 teknisi yang dipilih
+        $request->validate([
+            'technician_ids' => 'required|array|min:1',
+            'technician_ids.*' => 'exists:users,id'
         ]);
 
-        // Set teknisi menjadi Sibuk
-        User::where('id', $request->technician_id)->update(['is_busy' => 1]); 
+        // 2. Ambil data Order beserta Pelanggannya
+        $order = Order::with('user')->findOrFail($id);
+        
+        // 3. Hubungkan teknisi yang dipilih ke pesanan melalui tabel Pivot (order_user)
+        // Sync akan menghapus data lama dan menggantinya dengan pilihan baru yang dicentang
+        $order->technicians()->sync($request->technician_ids);
 
-        $order = Order::with(['user', 'technician', 'services'])->find($id);
-        $technician = $order->technician;
+        // 4. Update status order menjadi Dikonfirmasi
+        $order->update(['status' => 'confirmed']);
 
-        if ($technician && !empty($technician->phone)) {
-            $pesanTeknisi = "🚨 *TUGAS BARU!* 🚨\n\nHalo *{$technician->name}*, cek dashboard untuk tugas baru #{$order->id}!";
-            $fonnte->sendMessage($technician->phone, $pesanTeknisi);
+        // 5. Ambil data lengkap teknisi yang baru saja ditugaskan
+        $assignedTechs = User::whereIn('id', $request->technician_ids)->get();
+
+        // Variable untuk menyimpan nama-nama teknisi buat dikirim ke Pelanggan
+        $techNames = [];
+
+        foreach ($assignedTechs as $tech) {
+            // Tandai teknisi tersebut sedang sibuk bekerja
+            $tech->update(['is_busy' => 1]); 
+            
+            $techNames[] = $tech->name;
+
+            // KIRIM NOTIFIKASI WA KE MASING-MASING TEKNISI
+            if (!empty($tech->phone)) {
+                $pesanTeknisi = "📢 *TUGAS BARU!* 📢\n\nHalo *{$tech->name}*,\n\nAnda ditugaskan untuk Order #{$order->id}.\nPelanggan: *{$order->user->name}*\nLokasi: {$order->address_detail}\n\nSegera cek dashboard teknisi untuk melihat detail pengerjaan!";
+                $fonnte->sendMessage($tech->phone, $pesanTeknisi);
+            }
         }
 
+        // 6. KIRIM NOTIFIKASI WA KE PELANGGAN
         if ($order->user && !empty($order->user->phone)) {
-            $pesanPelanggan = "Halo *{$order->user->name}*, Order #{$order->id} telah Dikonfirmasi! Teknisi *{$technician->name}* segera meluncur.";
+            $daftarTeknisi = implode(', ', $techNames);
+            $pesanPelanggan = "✅ *PESANAN DIKONFIRMASI* ✅\n\nHalo *{$order->user->name}*,\n\nOrder #{$order->id} Anda telah dikonfirmasi oleh Admin.\n\n*Tim Teknisi Bertugas:* \n- {$daftarTeknisi}\n\nTeknisi kami segera meluncur ke lokasi Anda. Terima kasih!";
             $fonnte->sendMessage($order->user->phone, $pesanPelanggan);
         }
 
-        return redirect()->route('dashboard')->with('success', 'Teknisi berhasil ditugaskan!');
+        return back()->with('success', 'Tim Teknisi berhasil ditugaskan dan notifikasi WA telah terkirim!');
     }
 
     /**
@@ -184,9 +201,9 @@ class OrderController extends Controller
             'payment_step' => 'full'       // Tandai sekarang masuk ke tahap Pelunasan
         ]);
 
-        // 5. Reset Status Teknisi (Biar bisa ambil order lain)
-        if ($order->technician_id) {
-            \App\Models\User::where('id', $order->technician_id)->update(['is_busy' => 0]);
+        // 5. Reset Status Teknisi (Biar tim bisa ambil order lain)
+        foreach ($order->technicians as $tech) {
+            $tech->update(['is_busy' => 0]);
         }
 
         // 6. Kirim Notifikasi WA ke Pelanggan

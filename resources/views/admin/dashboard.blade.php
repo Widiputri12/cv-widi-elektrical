@@ -172,8 +172,8 @@
                                     <span class="text-xs font-black text-gray-500">{{ date('d M Y', strtotime($order->booking_date)) }}</span>
                                 </td>
                                 <td class="px-6 py-6 text-center">
-                                    <span class="text-[10px] font-black uppercase {{ $order->technician ? 'text-gray-800' : 'text-gray-300 italic' }}">
-                                        {{ $order->technician->name ?? 'None' }}
+                                    <span class="text-[10px] font-black uppercase {{ $order->technicians->count() > 0 ? 'text-gray-800' : 'text-gray-300 italic' }}">
+                                        {{ $order->technicians->count() > 0 ? $order->technicians->pluck('name')->implode(', ') : 'Belum Ditugaskan' }}
                                     </span>
                                 </td>
                                 <td class="px-6 py-6 text-center">
