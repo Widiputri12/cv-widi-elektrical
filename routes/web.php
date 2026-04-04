@@ -8,7 +8,8 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\PaymentCallbackController;
 use App\Http\Controllers\TechnicianController;
-    
+
+
 // --- 1. PUBLIC & GUEST ACCESS ---
 // Memberikan akses informasi umum sebelum user menggunakan layanan LBS
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -54,9 +55,7 @@ Route::middleware(['auth'])->group(function () {
 
 // --- 3. ADMIN MANAGEMENT (LBS MONITORING) ---
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
-    Route::get('/technicians', [TechnicianController::class, 'index'])->name('technicians.index');
-    Route::post('/technicians', [TechnicianController::class, 'store'])->name('technicians.store');
-    Route::delete('/technicians/{id}', [TechnicianController::class, 'destroy'])->name('technicians.destroy');
+    Route::resource('technicians', TechnicianController::class);
 
     // KELOLA ORDER: Admin memantau detail koordinat pesanan
     Route::get('/order/{id}', [OrderController::class, 'show'])->name('orders.show');

@@ -51,17 +51,26 @@
                     </a>
                 </div>
 
+                {{-- MENU DESKTOP --}}
                 <div class="hidden space-x-8 sm:-my-px sm:ml-10 sm:flex">
                     <a href="{{ route('dashboard') }}" 
                        class="inline-flex items-center px-1 pt-1 font-bold text-sm leading-5 nav-link-widi {{ request()->routeIs('dashboard') ? 'active' : '' }}">
                         Dashboard
                     </a>
 
+                    {{-- MENU KHUSUS ADMIN --}}
                     @if(Auth::user()->role === 'admin')
+                    
+                    <a href="{{ route('admin.technicians.index') }}" 
+                       class="inline-flex items-center px-1 pt-1 font-bold text-sm leading-5 nav-link-widi {{ request()->routeIs('admin.technicians.*') ? 'active' : '' }}">
+                        Kelola Teknisi
+                    </a>
+
                     <a href="{{ route('admin.galleries.index') }}" 
                        class="inline-flex items-center px-1 pt-1 font-bold text-sm leading-5 nav-link-widi {{ request()->routeIs('admin.galleries.index') ? 'active' : '' }}">
                         Kelola Galeri (Verifikasi)
                     </a>
+
                     @endif
                 </div>
             </div>
@@ -107,16 +116,24 @@
         </div>
     </div>
 
+    {{-- MENU MOBILE --}}
     <div :class="{'block': open, 'hidden': ! open}" class="hidden sm:hidden bg-white border-t border-gray-100">
         <div class="pt-2 pb-3 space-y-1">
             <x-responsive-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')" class="font-bold nav-widi-text-dark">
                 {{ __('Dashboard') }}
             </x-responsive-nav-link>
             
+            {{-- MENU MOBILE KHUSUS ADMIN --}}
             @if(Auth::user()->role === 'admin')
+            
+            <x-responsive-nav-link :href="route('admin.technicians.index')" :active="request()->routeIs('admin.technicians.*')" class="font-bold nav-widi-text-dark">
+                Kelola Teknisi
+            </x-responsive-nav-link>
+
             <x-responsive-nav-link :href="route('admin.galleries.index')" :active="request()->routeIs('admin.galleries.index')" class="font-bold nav-widi-text-dark">
                 Kelola Galeri (Verifikasi)
             </x-responsive-nav-link>
+
             @endif
         </div>
 
