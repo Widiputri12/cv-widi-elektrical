@@ -17,9 +17,10 @@ class DashboardController extends Controller
 
             // 1. DASHBOARD ADMIN
             if ($user->role === 'admin') {
-                $orders = Order::with(['user', 'services', 'technicians'])->latest()->get();
-                return view('admin.dashboard', compact('orders')); 
-            }
+            // ✅ UBAH get() MENJADI paginate(10)
+            $orders = Order::with(['user', 'services', 'technicians'])->latest()->paginate(10);
+            return view('admin.dashboard', compact('orders')); 
+        }
 
             // 2. DASHBOARD TEKNISI
             if ($user->role === 'technician') {

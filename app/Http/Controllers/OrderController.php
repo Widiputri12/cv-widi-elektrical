@@ -276,6 +276,23 @@ class OrderController extends Controller
         return redirect()->route('dashboard')->with('success', 'Pesanan berhasil dibatalkan dan notifikasi WA terkirim.');
     }
 
+    /**
+     * Menampilkan Halaman Laporan untuk Admin
+     */
+    public function laporan(Request $request)
+    {
+        // Ambil semua pesanan yang statusnya 'completed' (selesai) atau semua pesanan
+        $query = \App\Models\Order::with(['user', 'services'])->latest();
+
+        // Jika ingin filter bulan bisa dikembangkan di sini nanti
+        $orders = $query->get();
+        
+        // Hitung total pendapatan (DP + Pelunasan)
+        $totalPendapatan = $orders->sum('total_price');
+
+        return view('admin.laporan.index', compact('orders', 'totalPendapatan'));
+    }
+
     // Tambahkan helper function ini di bawah class (agar kode rapi)
     private function sendToAdmins($fonnte, $message) {
         $admins = \App\Models\User::where('role', 'admin')->get();

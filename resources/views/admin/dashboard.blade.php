@@ -197,6 +197,9 @@
                                 <td colspan="7" class="py-20 text-center text-gray-400 font-black uppercase tracking-[0.2em] text-xs">Belum ada pesanan masuk.</td>
                             </tr>
                             @endforelse
+                            <div class="p-6 bg-white border-t-4 border-[#1A1A1A]">
+                                {{ $orders->links() }}
+                            </div>
                         </tbody>
                     </table>
                 </div>
