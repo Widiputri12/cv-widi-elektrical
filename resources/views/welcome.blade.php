@@ -197,7 +197,7 @@
                 
                 <div class="w-full lg:w-5/12">
                     <div class="relative rounded-[2.5rem] overflow-hidden shadow-melayang group">
-                        <img src="{{ asset('logo.png') }}" alt="Misbahudi - Direktur CV Widi" class="w-full h-[550px] object-cover group-hover:scale-105 transition duration-700">
+                        <img src="{{ asset('Misbahudi.jpeg') }}" alt="Misbahudi - Direktur CV Widi" class="w-full h-[550px] object-cover group-hover:scale-105 transition duration-700">
                         
                         <div class="absolute inset-0 bg-gradient-to-t from-widi-dark/90 via-widi-dark/20 to-transparent flex flex-col justify-end p-8">
                             <h4 class="text-3xl font-black text-white tracking-tight">MISBAHUDI</h4>
