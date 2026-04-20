@@ -71,6 +71,11 @@
                         Kelola Galeri (Verifikasi)
                     </a>
 
+                    <a href="{{ route('services.index') }}" 
+                       class="inline-flex items-center px-1 pt-1 font-bold text-sm leading-5 nav-link-widi {{ request()->routeIs('services.index') ? 'active' : '' }}">
+                        Kelola Layanan
+                    </a>
+
                     <a href="{{ route('admin.laporan.index') }}" class="inline-flex items-center px-1 pt-1 font-bold text-sm leading-5 nav-link-widi {{ request()->routeIs('admin.laporan.index') ? 'active' : '' }}">
                         Laporan
                     </a>

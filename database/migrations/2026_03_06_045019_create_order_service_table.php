@@ -10,9 +10,7 @@ return new class extends Migration
     {
         Schema::create('order_service', function (Blueprint $blueprint) {
             $blueprint->id();
-            // Menghubungkan ke tabel orders
             $blueprint->foreignId('order_id')->constrained()->onDelete('cascade');
-            // Menghubungkan ke tabel services
             $blueprint->foreignId('service_id')->constrained()->onDelete('cascade');
             $blueprint->timestamps();
         });

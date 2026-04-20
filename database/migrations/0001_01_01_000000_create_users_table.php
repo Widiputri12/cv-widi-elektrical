@@ -14,7 +14,7 @@ return new class extends Migration
         $table->string('email')->unique(); 
         $table->string('phone')->nullable(); 
         $table->text('address')->nullable(); 
-        $table->string('role')->default('customer'); // Default: customer (bisa 'admin' atau 'technician')
+        $table->string('role')->default('customer'); 
         $table->timestamp('email_verified_at')->nullable();
         $table->string('password');
         $table->rememberToken();

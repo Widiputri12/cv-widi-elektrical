@@ -8,12 +8,14 @@ use App\Http\Controllers\OrderController;
 use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\PaymentCallbackController;
 use App\Http\Controllers\TechnicianController;
+use App\Http\Controllers\ServiceController;
 
 
 // --- 1. PUBLIC & GUEST ACCESS ---
 // Memberikan akses informasi umum sebelum user menggunakan layanan LBS
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/galeri', [GalleryController::class, 'index'])->name('gallery.index');
+
 
 Route::post('/payment/callback', [PaymentCallbackController::class, 'callback']);
 
@@ -51,7 +53,11 @@ Route::middleware(['auth'])->group(function () {
 
     // Rute untuk Admin meng-cancel (dengan catatan)
     Route::put('/admin/orders/{id}/cancel', [OrderController::class, 'cancelByAdmin'])->name('admin.orders.cancel');
-});
+
+    Route::resource('services', ServiceController::class);
+
+
+    });
 
 // --- 3. ADMIN MANAGEMENT (LBS MONITORING) ---
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -70,6 +76,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
 
     // --- KELOLA LAPORAN ---
     Route::get('/laporan', [\App\Http\Controllers\OrderController::class, 'laporan'])->name('laporan.index');
+
 });
 
 
