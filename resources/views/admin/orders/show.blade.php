@@ -52,10 +52,9 @@
                         </div>
                     </div>
 
-                    {{-- CARD MAP LBS (GEOLOCATION) --}}
                     <div class="bg-white rounded-2xl border-4 border-[#1A1A1A] shadow-[8px_8px_0px_#1A1A1A] overflow-hidden">
                         <div class="p-4 bg-[#1A1A1A] text-white flex justify-between items-center">
-                            <h3 class="font-black uppercase text-xs italic">📍 Titik Geolocation (LBS)</h3>
+                            <h3 class="font-black uppercase text-xs italic">📍 Titik GPS Pelanggan</h3>
                             <a href="https://www.google.com/maps?q={{ $order->latitude }},{{ $order->longitude }}" target="_blank" class="bg-[#FFD700] text-[#1A1A1A] px-4 py-1.5 rounded-lg text-[10px] font-black hover:scale-105 transition uppercase">
                                 Google Maps ↗
                             </a>
