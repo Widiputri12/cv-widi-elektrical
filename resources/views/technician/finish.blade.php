@@ -37,7 +37,6 @@
                 </div>
             </div>
 
-            {{-- 2. NAVIGASI LBS BERBASIS GEOLOCATION (NO API KEY NEEDED) --}}
             <div class="bg-white rounded-2xl border-2 border-[#1A1A1A] shadow-[4px_4px_0px_#1A1A1A] overflow-hidden mb-6">
                 <div class="p-4 bg-gray-50 border-b-2 border-gray-100 flex justify-between items-center">
                     <h3 class="text-sm font-black uppercase text-gray-800 flex items-center gap-2">
@@ -45,7 +44,7 @@
                             <span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
                             <span class="relative inline-flex rounded-full h-3 w-3 bg-[#D92323]"></span>
                         </span>
-                        Navigasi LBS Berbasis Geolocation
+                        Navigasi Lokasi Pelanggan
                     </h3>
                 </div>
                 
@@ -62,7 +61,6 @@
                 </div>
                 
                 <div class="p-4 bg-gray-50 border-t-2 border-gray-100">
-                    {{-- TOMBOL LBS UTAMA: Mengaktifkan Geolocation di HP Teknisi --}}
                     <a href="https://www.google.com/maps/dir/?api=1&destination={{ $order->latitude }},{{ $order->longitude }}&travelmode=driving" 
                     target="_blank" 
                     class="flex justify-center items-center bg-[#D92323] text-white font-black text-xs py-4 rounded-xl uppercase tracking-widest shadow-[4px_4px_0px_#1A1A1A] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all">
