@@ -17,7 +17,7 @@ Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/galeri', [GalleryController::class, 'index'])->name('gallery.index');
 
 
-Route::post('/payment/callback', [PaymentCallbackController::class, 'callback']);
+Route::post('/api/payment/callback', [PaymentCallbackController::class, 'callback']);
 
 // --- 2. AUTHENTICATED ACCESS (LBS ECOSYSTEM) ---
 Route::middleware(['auth'])->group(function () {
