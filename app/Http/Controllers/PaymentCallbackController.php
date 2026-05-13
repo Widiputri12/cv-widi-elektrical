@@ -10,7 +10,6 @@ use Illuminate\Support\Facades\Log;
 
 class PaymentCallbackController extends Controller
 {
-    // Tambahkan FonnteService $fonnte di sini agar bisa digunakan
     public function callback(Request $request, FonnteService $fonnte) 
     {
         try {

@@ -75,7 +75,7 @@ class GalleryController extends Controller
     {
         $request->validate([
             'title' => 'required',
-            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048', // Maks 2MB
+            'image' => 'required|image|mimes:jpeg,png,jpg,gif|max:2048', 
         ]);
 
         if ($request->file('image')) {
@@ -90,7 +90,7 @@ class GalleryController extends Controller
             'title' => $request->title,
             'description' => $request->description,
             'image_path' => $imagePath,
-            'status' => $status, // Set status otomatis
+            'status' => $status, 
         ]);
 
         return redirect()->route('gallery.index')->with('success', 'Foto berhasil ditambahkan!');

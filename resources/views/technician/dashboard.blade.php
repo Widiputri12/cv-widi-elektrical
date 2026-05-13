@@ -32,7 +32,6 @@
                                 </td>
                                 <td class="px-6 py-4">
                                     <div class="flex flex-wrap gap-1">
-                                        {{-- REVISI: Menampilkan banyak layanan --}}
                                         @foreach($order->services as $svc)
                                             <span class="bg-blue-50 text-blue-700 px-2 py-0.5 rounded text-[10px] border border-blue-100 uppercase">
                                                 {{ $svc->name }}
@@ -59,7 +58,7 @@
                                     Belum ada tugas untukmu hari ini.
                                 </td>
                             </tr>
-                            @endforelse {{-- PENUTUP YANG SERING HILANG --}}
+                            @endforelse 
                         </tbody>
                     </table>
                 </div>

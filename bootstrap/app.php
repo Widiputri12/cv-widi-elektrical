@@ -13,12 +13,10 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware) {
             
-        // 1. DAFTARKAN NAMA 'role' DI SINI AGAR LARAVEL KENAL ✅
         $middleware->alias([
             'role' => \App\Http\Middleware\RoleMiddleware::class,
         ]);
 
-        // 2. INI PENGECUALIAN MIDTRANS KAMU YANG DULU (BIARKAN SAJA)
         $middleware->validateCsrfTokens(except: [
             'api/payment/callback', 
             'payment/callback',
@@ -26,5 +24,4 @@ return Application::configure(basePath: dirname(__DIR__))
         
     })
     ->withExceptions(function (Exceptions $exceptions) {
-        // Biarkan kosong jika tidak ada custom exception
-    })->create(); // ✅ INI WAJIB ADA DI LARAVEL 11
+    })->create(); 

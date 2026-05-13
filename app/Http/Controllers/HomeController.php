@@ -14,7 +14,6 @@ class HomeController extends Controller
         $services = Service::all(); 
 
         // 2. Ambil Data Galeri
-        // PERBAIKAN: Ganti 'published' jadi 'approved' sesuai database kamu
         $galleries = Gallery::where('status', 'approved')->latest()->take(9)->get();
 
         return view('welcome', compact('services', 'galleries'));

@@ -44,7 +44,6 @@ class OrderController extends Controller
         $services = Service::whereIn('id', $request->service_ids)->get();
         $totalPrice = $services->sum('price');
         
-        // LOGIKA REVISI DOSEN: DP 50%
         $dpAmount = $totalPrice * 0.5;
         $remainingBalance = $totalPrice - $dpAmount;
 
@@ -61,7 +60,7 @@ class OrderController extends Controller
             'remaining_balance' => $remainingBalance,
             'status' => 'pending',        
             'payment_status' => 'unpaid', 
-            'payment_step' => 'dp', // Tahap pertama: DP
+            'payment_step' => 'dp', 
         ]);
 
         $order->services()->attach($request->service_ids);
@@ -69,15 +68,12 @@ class OrderController extends Controller
         // GENERATE TOKEN DP SEKARANG (Agar tombol bayar langsung muncul)
         try {
             $snapToken = $midtrans->getSnapToken($order); //
-            // PASTIKAN BARIS INI ADA:
             $order->update(['snap_token' => $snapToken]); //
             Log::info("Snap Token DP Berhasil: " . $snapToken); //
         } catch (\Exception $e) {
             Log::error('Gagal buat token DP: ' . $e->getMessage()); //
         }
 
-        // Catatan: Notifikasi ke Admin via Fonnte sebaiknya di Callback 
-        // setelah DP Lunas, tapi jika Princess ingin tetap ada notifikasi awal:
         $serviceNames = $services->pluck('name')->implode(', ');
         $pesanAdmin = "🚨 *ORDER BARU (MENUNGGU DP)!* 🚨\n\n";
         $pesanAdmin .= "👤 Nama: {$user->name}\n";
@@ -109,46 +105,33 @@ class OrderController extends Controller
     }
 
     /**
-     * Admin menugaskan teknisi (LBS Logic)
+     * Admin menugaskan teknisi 
      */
     public function assignTechnician(Request $request, $id, FonnteService $fonnte)
     {
-        // 1. Validasi Input: Pastikan ada minimal 1 teknisi yang dipilih
         $request->validate([
             'technician_ids' => 'required|array|min:1',
             'technician_ids.*' => 'exists:users,id'
         ]);
 
-        // 2. Ambil data Order beserta Pelanggannya
         $order = Order::with('user')->findOrFail($id);
-        
-        // 3. Hubungkan teknisi yang dipilih ke pesanan melalui tabel Pivot (order_user)
-        // Sync akan menghapus data lama dan menggantinya dengan pilihan baru yang dicentang
-        $order->technicians()->sync($request->technician_ids);
-
-        // 4. Update status order menjadi Dikonfirmasi
+                $order->technicians()->sync($request->technician_ids);
         $order->update(['status' => 'confirmed']);
-
-        // 5. Ambil data lengkap teknisi yang baru saja ditugaskan
         $assignedTechs = User::whereIn('id', $request->technician_ids)->get();
 
-        // Variable untuk menyimpan nama-nama teknisi buat dikirim ke Pelanggan
         $techNames = [];
 
         foreach ($assignedTechs as $tech) {
-            // Tandai teknisi tersebut sedang sibuk bekerja
             $tech->update(['is_busy' => 1]); 
             
             $techNames[] = $tech->name;
 
-            // KIRIM NOTIFIKASI WA KE MASING-MASING TEKNISI
             if (!empty($tech->phone)) {
                 $pesanTeknisi = "📢 *TUGAS BARU!* 📢\n\nHalo *{$tech->name}*,\n\nAnda ditugaskan untuk Order #{$order->id}.\nPelanggan: *{$order->user->name}*\nLokasi: {$order->address_detail}\n\nSegera cek dashboard teknisi untuk melihat detail pengerjaan!";
                 $fonnte->sendMessage($tech->phone, $pesanTeknisi);
             }
         }
 
-        // 6. KIRIM NOTIFIKASI WA KE PELANGGAN
         if ($order->user && !empty($order->user->phone)) {
             $daftarTeknisi = implode(', ', $techNames);
             $pesanPelanggan = "✅ *PESANAN DIKONFIRMASI* ✅\n\nHalo *{$order->user->name}*,\n\nOrder #{$order->id} Anda telah dikonfirmasi oleh Admin.\n\n*Tim Teknisi Bertugas:* \n- {$daftarTeknisi}\n\nTeknisi kami segera meluncur ke lokasi Anda. Terima kasih!";
@@ -168,18 +151,16 @@ class OrderController extends Controller
     }
 
     /**
-     * Teknisi menyelesaikan tugas (LBS Reset & Generate Token Pelunasan)
+     * Teknisi menyelesaikan tugas 
      */
     public function updateFinish(Request $request, $id, MidtransService $midtrans, FonnteService $fonnte) 
     {
-        // 1. Validasi Input Teknisi
         $request->validate([
             'image' => 'required|image|max:10240',
             'category' => 'required',
             'title' => 'required',
         ]);
 
-        // 2. Upload Bukti Pekerjaan ke Galeri
         if ($request->hasFile('image')) {
             $imagePath = $request->file('image')->store('proofs', 'public');
             \App\Models\Gallery::create([
@@ -191,37 +172,29 @@ class OrderController extends Controller
             ]);
         }
 
-        // 3. Ambil Data Order
         $order = Order::with(['user', 'services'])->findOrFail($id);
 
-        // 4. UPDATE LOGIKA REVISI: Kerja Selesai, Tapi Bayar Belum (Tahap Pelunasan)
         $order->update([
-            'status' => 'completed',       // Kerja teknisi selesai
-            'payment_status' => 'unpaid',  // Set ke unpaid lagi supaya tombol PELUNASAN muncul
-            'payment_step' => 'full'       // Tandai sekarang masuk ke tahap Pelunasan
+            'status' => 'completed',      
+            'payment_status' => 'unpaid', 
+            'payment_step' => 'full'       
         ]);
 
-        // 5. Reset Status Teknisi (Biar tim bisa ambil order lain)
         foreach ($order->technicians as $tech) {
             $tech->update(['is_busy' => 0]);
         }
 
-        // 6. Kirim Notifikasi WA ke Pelanggan
         if ($order->user && !empty($order->user->phone)) {
             $serviceNames = $order->services->pluck('name')->implode(', ');
             $pesanBayar = "❄️ *KERJA SELESAI!* ❄️\n\nHalo *{$order->user->name}*,\n\nServis *{$serviceNames}* telah diselesaikan oleh teknisi kami.\n\nSilakan lakukan *PELUNASAN SISA 50%* di dashboard agar pesanan dapat ditutup secara resmi.\n\nTerima kasih atas kepercayaannya!";
             $fonnte->sendMessage($order->user->phone, $pesanBayar);
         }
 
-        // 7. GENERATE SNAP TOKEN PELUNASAN (Sisa 50%)
         try {
-            // Berikan jeda 1 detik agar DB tenang
             sleep(1); 
             
-            // MidtransService otomatis mengambil sisa saldo karena status sudah 'completed'
             $snapToken = $midtrans->getSnapToken($order);
             
-            // Simpan token baru untuk tombol pelunasan di dashboard pelanggan
             $order->update(['snap_token' => $snapToken]); 
             
             \Illuminate\Support\Facades\Log::info("Snap Token Pelunasan Berhasil dibuat untuk Order #{$id}");
@@ -245,9 +218,8 @@ class OrderController extends Controller
             'cancel_notes' => 'Dibatalkan oleh Pelanggan'
         ]);
 
-        // NOTIF KE ADMIN: Pelanggan membatalkan pesanan
         $pesanAdmin = "⚠️ *PESANAN DIBATALKAN PELANGGAN* ⚠️\n\nHalo Admin, Pelanggan *{$order->user->name}* telah membatalkan pesanan #{$order->id} secara mandiri.";
-        $this->sendToAdmins($fonnte, $pesanAdmin); // Gunakan helper sendToAdmins tadi
+        $this->sendToAdmins($fonnte, $pesanAdmin); 
 
         return back()->with('success', 'Pesanan berhasil Anda batalkan.');
     }
@@ -257,7 +229,6 @@ class OrderController extends Controller
         $request->validate(['cancel_notes' => 'required|string|min:5']);
         $order = Order::with('user')->findOrFail($id);
 
-        // PROTEKSI: Jika sudah DP (payment_status == paid), Admin dilarang cancel!
         if ($order->payment_status === 'paid') {
             return back()->with('error', 'Gagal! Pesanan yang sudah dibayar DP-nya tidak dapat dibatalkan.');
         }
@@ -267,7 +238,6 @@ class OrderController extends Controller
             'cancel_notes' => $request->cancel_notes
         ]);
 
-        // NOTIF KE PELANGGAN: Disertai catatan admin
         if ($order->user && !empty($order->user->phone)) {
             $pesan = "Halo *{$order->user->name}*,\n\nMohon maaf, pesanan #{$order->id} Anda *DIBATALKAN* oleh Admin CV Widi.\n\n*Catatan Admin:* \"{$request->cancel_notes}\"\n\nSilakan hubungi kami jika ada pertanyaan.";
             $fonnte->sendMessage($order->user->phone, $pesan);
@@ -281,10 +251,7 @@ class OrderController extends Controller
      */
     public function laporan(Request $request)
     {
-        // Ambil semua pesanan yang statusnya 'completed' (selesai) atau semua pesanan
         $query = \App\Models\Order::with(['user', 'services'])->latest();
-
-        // Jika ingin filter bulan bisa dikembangkan di sini nanti
         $orders = $query->get();
         
         // Hitung total pendapatan (DP + Pelunasan)

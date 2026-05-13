@@ -12,18 +12,16 @@ use App\Http\Controllers\ServiceController;
 
 
 // --- 1. PUBLIC & GUEST ACCESS ---
-// Memberikan akses informasi umum sebelum user menggunakan layanan LBS
 Route::get('/', [HomeController::class, 'index'])->name('home');
 Route::get('/galeri', [GalleryController::class, 'index'])->name('gallery.index');
 
 
 Route::post('/api/payment/callback', [PaymentCallbackController::class, 'callback']);
 
-// --- 2. AUTHENTICATED ACCESS (LBS ECOSYSTEM) ---
+// --- 2. AUTHENTICATED ACCESS ---
 Route::middleware(['auth'])->group(function () {
 
-    // --- DASHBOARD (Sistem Deteksi Role & Status is_busy) ---
-    // Gerbang utama LBS untuk melihat ketersediaan teknisi dan pesanan
+    // Gerbang utama untuk melihat ketersediaan teknisi dan pesanan
     Route::get('/dashboard', [DashboardController::class, 'index'])
         ->middleware(['verified'])
         ->name('dashboard');
@@ -33,25 +31,18 @@ Route::middleware(['auth'])->group(function () {
     Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
-    // --- CUSTOMER SERVICE (LBS: PENENTUAN LOKASI) ---
-    // Di sinilah titik awal Geolocation dicatat saat pelanggan memesan servis
+    // --- CUSTOMER SERVICE  ---
     Route::post('/orders', [OrderController::class, 'store'])->name('orders.store');
 
     // --- UPLOAD GALERI KERJA ---
     Route::get('/galeri/upload', [GalleryController::class, 'create'])->name('gallery.create');
     Route::post('/galeri', [GalleryController::class, 'store'])->name('gallery.store');
 
-    // --- TEKNISI: LBS NAVIGASI & PENYELESAIAN ---
+    // --- TEKNISI NAVIGASI & PENYELESAIAN ---
     // finishForm: Menampilkan peta rute dari Geolocation teknisi ke pelanggan
     Route::get('/orders/{id}/finish', [OrderController::class, 'finishForm'])->name('technician.orders.finish');
-    
-    // updateFinish: Mengupdate status is_busy menjadi 0 (Tersedia Kembali)
     Route::put('/orders/{id}/finish', [OrderController::class, 'updateFinish'])->name('technician.orders.updateFinish');
-
-    // Rute untuk Princess meng-cancel pesanannya sendiri
     Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelByCustomer'])->name('orders.cancel');
-
-    // Rute untuk Admin meng-cancel (dengan catatan)
     Route::put('/admin/orders/{id}/cancel', [OrderController::class, 'cancelByAdmin'])->name('admin.orders.cancel');
 
     Route::resource('services', ServiceController::class);
@@ -59,14 +50,14 @@ Route::middleware(['auth'])->group(function () {
 
     });
 
-// --- 3. ADMIN MANAGEMENT (LBS MONITORING) ---
+// --- 3. ADMIN MANAGEMENT ---
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::resource('technicians', TechnicianController::class);
 
     // KELOLA ORDER: Admin memantau detail koordinat pesanan
     Route::get('/order/{id}', [OrderController::class, 'show'])->name('orders.show');
     
-    // ASSIGN TECHNICIAN: LBS logic memicu status is_busy menjadi 1
+    // ASSIGN TECHNICIAN: navigasi logic memicu status is_busy menjadi 1
     Route::put('/order/{id}/assign', [OrderController::class, 'assignTechnician'])->name('orders.assign');
 
     // KELOLA GALERI (VERIFIKASI HASIL KERJA)

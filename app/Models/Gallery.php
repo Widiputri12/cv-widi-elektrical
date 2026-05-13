@@ -9,7 +9,6 @@ class Gallery extends Model
 {
     use HasFactory;
 
-    // DAFTARKAN SEMUA KOLOM YANG BOLEH DIISI
     protected $fillable = [
         'title',
         'category', 

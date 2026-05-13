@@ -25,7 +25,7 @@ class User extends Authenticatable
         'phone',   
         'address',  
         'role',
-        'is_busy', // Tambahkan is_busy agar bisa ditandai sedang kerja
+        'is_busy',
     ];
 
     /**

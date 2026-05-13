@@ -32,14 +32,13 @@ class RegisteredUserController extends Controller
         $request->validate([
             'name' => ['required', 'string', 'max:255'],
             
-            // PERUBAHAN DISINI: Tambah 'ends_with:@gmail.com'
             'email' => [
                 'required', 
                 'string', 
                 'email', 
                 'max:255', 
                 'unique:'.User::class, 
-                'ends_with:@gmail.com' // <--- INI KUNCINYA (Wajib Gmail)
+                'ends_with:@gmail.com' 
             ],
             
             'phone' => ['required', 'string', 'max:15'],
@@ -48,12 +47,12 @@ class RegisteredUserController extends Controller
         ]);
 
         //Simpan ke Database
-        $user = User::create([  // <--- INI DIA USER::CREATE NYA
+        $user = User::create([ 
             'name' => $request->name,
             'email' => $request->email,
             'phone' => $request->phone,
             'address' => $request->address,
-            'role' => 'customer',  // <--- INI JUGA SUDAH ADA (Role Customer)
+            'role' => 'customer',  
             'password' => Hash::make($request->password),
         ]);
 

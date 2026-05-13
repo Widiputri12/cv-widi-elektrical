@@ -9,11 +9,9 @@ class FonnteService
 {
     public function sendMessage($target, $message)
     {
-        // 1. FORMAT NOMOR HP (Ubah 08 jadi 628)
-        // Hapus karakter selain angka (spasi, strip, dll)
+        // 1. FORMAT NOMOR HP
         $target = preg_replace('/[^0-9]/', '', $target);
         
-        // Jika dimulai dengan '08', ganti '0' di depan dengan '62'
         if (substr($target, 0, 2) == '08') {
             $target = '62' . substr($target, 1);
         }
@@ -35,13 +33,11 @@ class FonnteService
             ])->post('https://api.fonnte.com/send', [
                 'target' => $target,
                 'message' => $message,
-                'countryCode' => '62', // Default Indonesia
+                'countryCode' => '62',
             ]);
 
-            // Karena VS Code sudah kenal, kita bisa pakai bawaan Laravel yang lebih rapi
             $result = $response->json(); 
             
-            // Catat di log jika gagal agar mudah dilacak
             if (isset($result['status']) && !$result['status']) {
                 Log::error('Fonnte Error: ' . ($result['reason'] ?? 'Unknown error'));
             }
