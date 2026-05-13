@@ -66,8 +66,7 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::delete('/galleries/{id}', [GalleryController::class, 'destroy'])->name('galleries.destroy');
 
     // --- KELOLA LAPORAN ---
-    Route::get('/laporan', [\App\Http\Controllers\OrderController::class, 'laporan'])->name('laporan.index');
-
+    Route::get('/admin/laporan', [OrderController::class, 'laporan'])->name('admin.laporan');
 });
 
 

@@ -98,7 +98,7 @@ class OrderController extends Controller
             ]);
 
         $order->services()->sync($pivotData);
-        
+
         // GENERATE TOKEN DP SEKARANG (Agar tombol bayar langsung muncul)
         try {
             $snapToken = $midtrans->getSnapToken($order); 
@@ -286,11 +286,32 @@ class OrderController extends Controller
      */
     public function laporan(Request $request)
     {
-        $query = \App\Models\Order::with(['user', 'services'])->latest();
-        $orders = $query->get();
-        
-        // Hitung total pendapatan (DP + Pelunasan)
-        $totalPendapatan = $orders->sum('total_price');
+        // 1. Mulai Query dengan relasi
+        $query = Order::with(['user', 'services']);
+
+        // 2. Filter berdasarkan Tanggal Mulai
+        if ($request->has('start_date') && $request->start_date) {
+            $query->whereDate('created_at', '>=', $request->start_date);
+        }
+
+        // 3. Filter berdasarkan Tanggal Selesai
+        if ($request->has('end_date') && $request->end_date) {
+            $query->whereDate('created_at', '<=', $request->end_date);
+        }
+
+        // 4. Filter berdasarkan Status (Completed/Cancelled)
+        if ($request->has('status') && $request->status) {
+            $query->where('status', $request->status);
+        }
+
+        // 5. Eksekusi data terbaru
+        $orders = $query->latest()->get();
+
+        // 6. Hitung Total Pendapatan dari hasil filter (Hanya yang lunas/paid)
+        // Jika statusnya 'cancelled', biasanya tidak dihitung ke pendapatan
+        $totalPendapatan = $orders->where('payment_status', 'paid')
+                                ->where('status', '!=', 'cancelled')
+                                .sum('total_price');
 
         return view('admin.laporan.index', compact('orders', 'totalPendapatan'));
     }
