@@ -47,7 +47,7 @@ class Order extends Model
 
     public function services(): BelongsToMany
     {
-        return $this->belongsToMany(Service::class, 'order_service'); 
+        return $this->belongsToMany(Service::class, 'order_service')->withPivot('quantity');
     }
 
     public function schedules()

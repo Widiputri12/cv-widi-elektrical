@@ -146,35 +146,43 @@
                                 </div>
 
                                 <div class="mb-6">
-                                    <label class="block text-[11px] font-black text-[#1A1A1A] uppercase mb-3 tracking-widest">Pilih Layanan (Bisa pilih lebih dari satu) *</label>
+                                    <label class="block text-[11px] font-black text-[#1A1A1A] uppercase mb-3 tracking-widest">Pilih Layanan & Jumlah *</label>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         @foreach($services as $service)
-                                        <label class="relative flex items-center p-4 border-2 border-gray-200 rounded-2xl cursor-pointer hover:border-[#D92323] transition-all group has-[:checked]:border-[#D92323] has-[:checked]:bg-red-50 shadow-sm">
-                                            <input type="checkbox" name="service_ids[]" value="{{ $service->id }}" 
-                                                   class="w-5 h-5 text-[#D92323] border-2 border-gray-300 rounded focus:ring-0 cursor-pointer">
-                                            <div class="ml-4">
-                                                <p class="text-sm font-black text-gray-800 uppercase tracking-tight group-hover:text-[#D92323]">{{ $service->name }}</p>
-                                                <p class="text-[11px] font-bold text-[#D92323]">Rp {{ number_format($service->price, 0, ',', '.') }}</p>
+                                        <div class="relative flex items-center justify-between p-4 border-2 border-gray-200 rounded-2xl transition-all group hover:border-[#D92323] has-[:checked]:border-[#D92323] has-[:checked]:bg-red-50 shadow-sm">
+                                            
+                                            {{-- Checkbox Layanan --}}
+                                            <label class="flex items-center cursor-pointer flex-1">
+                                                <input type="checkbox" name="service_ids[]" value="{{ $service->id }}" 
+                                                    class="service-checkbox w-5 h-5 text-[#D92323] border-2 border-gray-300 rounded focus:ring-0 cursor-pointer"
+                                                    onchange="toggleQty(this, {{ $service->id }})">
+                                                <div class="ml-4">
+                                                    <p class="text-sm font-black text-gray-800 uppercase tracking-tight group-hover:text-[#D92323]">{{ $service->name }}</p>
+                                                    <p class="text-[11px] font-bold text-[#D92323]">Rp {{ number_format($service->price, 0, ',', '.') }}</p>
+                                                </div>
+                                            </label>
+
+                                            {{-- Input Jumlah (Akan aktif kalau dicentang) --}}
+                                            <div class="w-20">
+                                                <input type="number" name="service_qty[{{ $service->id }}]" id="qty_{{ $service->id }}" value="1" min="1" disabled
+                                                    class="w-full px-2 py-2 border-2 border-gray-300 rounded-xl focus:ring-0 focus:border-[#D92323] text-center text-sm font-black text-gray-800 shadow-sm disabled:bg-gray-100 disabled:text-gray-400">
                                             </div>
-                                        </label>
+                                        </div>
                                         @endforeach
                                     </div>
                                     @error('service_ids')
-                                        <p class="text-red-600 text-[10px] font-black uppercase mt-2 italic tracking-wider">⚠️ {{ $message }}</p>
+                                        <p class="text-red-600 text-[10px] font-black uppercase mt-2 italic tracking-wider">⚠️ Silakan pilih minimal satu layanan!</p>
                                     @enderror
                                 </div>
 
-                                <div class="mb-6">
-                                    <label class="block text-[11px] font-black text-[#1A1A1A] uppercase mb-3 tracking-widest">Jumlah Unit AC *</label>
-                                    <div class="relative">
-                                        <input type="number" name="quantity" id="quantity" value="{{ old('quantity', 1) }}" min="1"
-                                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:ring-0 focus:border-[#D92323] transition-all text-sm font-black text-gray-800 shadow-sm"
-                                            placeholder="Contoh: 2">
-                                    </div>
-                                    @error('quantity')
-                                        <p class="text-red-600 text-[10px] font-black uppercase mt-2 italic tracking-wider">⚠️ {{ $message }}</p>
-                                    @enderror
-                                </div>
+                                {{-- Script Mungil untuk mengaktifkan input jumlah --}}
+                                <script>
+                                    function toggleQty(checkbox, id) {
+                                        const qtyInput = document.getElementById('qty_' + id);
+                                        qtyInput.disabled = !checkbox.checked;
+                                        if(!checkbox.checked) qtyInput.value = 1; // Reset ke 1 kalau centang dilepas
+                                    }
+                                </script>
 
                                 <div class="mb-6">
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">

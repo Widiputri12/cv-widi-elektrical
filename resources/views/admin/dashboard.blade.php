@@ -177,7 +177,7 @@
                                 <td class="px-6 py-6">
                                     <div class="flex flex-wrap gap-1">
                                         @foreach($order->services as $svc)
-                                            <span class="bg-gray-100 border border-gray-200 px-2 py-0.5 rounded text-[9px] font-black uppercase text-gray-600">{{ $svc->name }}</span>
+                                            <span class="bg-gray-100 border border-gray-200 px-2 py-0.5 rounded text-[9px] font-black uppercase text-gray-600">{{ $svc->name }} ({{ $svc->pivot->quantity }})</span>
                                         @endforeach
                                     </div>
                                 </td>

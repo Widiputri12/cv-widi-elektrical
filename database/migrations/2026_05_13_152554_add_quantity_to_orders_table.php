@@ -11,9 +11,8 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('orders', function (Blueprint $table) {
-            // Hapus bagian ->after('service_id')
-            $table->integer('quantity')->default(1);
+        Schema::table('order_service', function (Blueprint $table) {
+            $table->integer('quantity')->default(1)->after('service_id');
         });
     }
 

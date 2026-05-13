@@ -22,14 +22,11 @@ class OrderController extends Controller
         $user = Auth::user();
 
         $request->validate([
-            'phone' => [
-                'required',
-                'numeric',
-                'in:' . $user->phone, 
-            ],
+            'phone' => ['required', 'numeric', 'in:' . $user->phone],
             'service_ids' => 'required|array|min:1',
             'service_ids.*' => 'exists:services,id',
-            'quantity' => 'required|integer|min:1', // <-- TAMBAHAN: Validasi Quantity
+            // Validasi input service_qty array
+            'service_qty' => 'required|array',
             'booking_date' => 'required|date|after_or_equal:today',
             'booking_time' => 'required',
             'address_detail' => 'required|string|min:10',
@@ -59,33 +56,49 @@ class OrderController extends Controller
         // -------------------------------------
 
         $services = Service::whereIn('id', $request->service_ids)->get();
+            
+            $totalPrice = 0;
+            $totalAllItems = 0; // Untuk mencatat total unit keseluruhan
+            $pivotData = []; // Untuk simpan ke tabel relasi
+            $serviceDetailsForWa = []; // Untuk teks di WA
+
+            foreach ($services as $service) {
+                // Ambil jumlah berdasarkan ID layanannya (default 1 jika kosong)
+                $qty = $request->service_qty[$service->id] ?? 1;
+                
+                // Harga per layanan = Harga asli x Jumlah
+                $totalPrice += ($service->price * $qty);
+                $totalAllItems += $qty;
+                
+                // Siapkan data untuk tabel pivot order_service
+                $pivotData[$service->id] = ['quantity' => $qty];
+                
+                // Siapkan teks untuk WA Admin (Contoh: Cuci AC (3x), Tambah Freon (1x))
+                $serviceDetailsForWa[] = "{$service->name} ({$qty}x)";
+            }
+            
+            $dpAmount = round($totalPrice * 0.5);
+            $remainingBalance = $totalPrice - $dpAmount;
+
+            $order = Order::create([
+                'user_id' => $user->id,
+                'quantity' => $totalAllItems, // Total seluruh unit disatukan
+                'booking_date' => $request->booking_date,
+                'booking_time' => $request->booking_time,
+                'address_detail' => $request->address_detail,
+                'latitude' => $request->latitude,
+                'longitude' => $request->longitude,
+                'notes' => $request->notes ?? '', // Tambahkan fallback string kosong
+                'total_price' => $totalPrice,
+                'dp_amount' => $dpAmount, 
+                'remaining_balance' => $remainingBalance,
+                'status' => 'pending',        
+                'payment_status' => 'unpaid', 
+                'payment_step' => 'dp', 
+            ]);
+
+        $order->services()->sync($pivotData);
         
-        // --- UBAHAN: KALKULASI HARGA DENGAN QUANTITY ---
-        $basePrice = $services->sum('price');
-        $totalPrice = $basePrice * $request->quantity; // Dikalikan jumlah AC
-        
-        $dpAmount = $totalPrice * 0.5;
-        $remainingBalance = $totalPrice - $dpAmount;
-
-        $order = Order::create([
-            'user_id' => $user->id,
-            'quantity' => $request->quantity, // <-- TAMBAHAN: Simpan ke DB
-            'booking_date' => $request->booking_date,
-            'booking_time' => $request->booking_time,
-            'address_detail' => $request->address_detail,
-            'latitude' => $request->latitude,
-            'longitude' => $request->longitude,
-            'notes' => $request->notes,
-            'total_price' => $totalPrice,
-            'dp_amount' => $dpAmount, 
-            'remaining_balance' => $remainingBalance,
-            'status' => 'pending',        
-            'payment_status' => 'unpaid', 
-            'payment_step' => 'dp', 
-        ]);
-
-        $order->services()->attach($request->service_ids);
-
         // GENERATE TOKEN DP SEKARANG (Agar tombol bayar langsung muncul)
         try {
             $snapToken = $midtrans->getSnapToken($order); 
@@ -99,7 +112,7 @@ class OrderController extends Controller
         $pesanAdmin = "🚨 *ORDER BARU (MENUNGGU DP)!* 🚨\n\n";
         $pesanAdmin .= "👤 Nama: {$user->name}\n";
         // --- UBAHAN: Menampilkan jumlah AC di notif WA ---
-        $pesanAdmin .= "🛠️ Layanan: {$serviceNames} ({$request->quantity} Unit)\n";
+        $pesanAdmin .= "🛠️ Layanan: {$serviceNames} ({$totalAllItems} Unit)\n";
         $pesanAdmin .= "💰 Total: Rp " . number_format($totalPrice, 0, ',', '.') . "\n";
         $pesanAdmin .= "💵 DP 50%: Rp " . number_format($dpAmount, 0, ',', '.') . "\n";
         $pesanAdmin .= "📅 Jadwal: " . date('d M Y', strtotime($order->booking_date)) . " jam " . date('H:i', strtotime($order->booking_time)) . "\n\n";
