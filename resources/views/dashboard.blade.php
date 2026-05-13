@@ -164,26 +164,37 @@
                                     @enderror
                                 </div>
 
-                                <div class="grid grid-cols-1 md:grid-cols-1 gap-5 mb-6">
-                                    <div>
-                                        <label class="block text-[11px] font-black text-[#1A1A1A] uppercase mb-2 tracking-widest">Jadwal Kedatangan *</label>
-                                        <div class="flex gap-2">
-                                            <div class="w-3/5">
-                                                <input type="date" name="booking_date" value="{{ old('booking_date') }}" 
-                                                    class="w-full border-2 @error('booking_date') border-red-500 @else border-gray-300 @enderror rounded-xl p-3 text-sm font-bold focus:ring-0 focus:border-[#D92323] transition-colors">
-                                            </div>
-                                            <div class="w-2/5">
-                                                <select name="booking_time" class="w-full border-2 border-gray-300 rounded-xl p-3 text-sm font-bold focus:ring-0 focus:border-[#D92323] cursor-pointer">
-                                                    <option value="08:00">08:00</option>
-                                                    <option value="10:00">10:00</option>
-                                                    <option value="13:00">13:00</option>
-                                                    <option value="15:00">15:00</option>
-                                                </select>
-                                            </div>
+                                <div class="mb-6">
+                                    <label class="block text-[11px] font-black text-[#1A1A1A] uppercase mb-3 tracking-widest">Jumlah Unit AC *</label>
+                                    <div class="relative">
+                                        <input type="number" name="quantity" id="quantity" value="{{ old('quantity', 1) }}" min="1"
+                                            class="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:ring-0 focus:border-[#D92323] transition-all text-sm font-black text-gray-800 shadow-sm"
+                                            placeholder="Contoh: 2">
+                                    </div>
+                                    @error('quantity')
+                                        <p class="text-red-600 text-[10px] font-black uppercase mt-2 italic tracking-wider">⚠️ {{ $message }}</p>
+                                    @enderror
+                                </div>
+
+                                <div class="mb-6">
+                                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                        <div>
+                                            <label class="block text-[11px] font-black text-[#1A1A1A] uppercase mb-3 tracking-widest">Tanggal Pengerjaan *</label>
+                                            <input type="date" name="booking_date" value="{{ old('booking_date') }}"
+                                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:ring-0 focus:border-[#D92323] transition-all text-sm font-black text-gray-800 shadow-sm">
+                                            @error('booking_date')
+                                                <p class="text-red-600 text-[10px] font-black uppercase mt-2 italic tracking-wider">⚠️ {{ $message }}</p>
+                                            @enderror
                                         </div>
-                                        @error('booking_date')
-                                            <p class="text-red-600 text-[10px] font-black uppercase mt-1 italic tracking-wider">⚠️ {{ $message }}</p>
-                                        @enderror
+                                        
+                                        <div>
+                                            <label class="block text-[11px] font-black text-[#1A1A1A] uppercase mb-3 tracking-widest">Jam Pengerjaan *</label>
+                                            <input type="time" name="booking_time" value="{{ old('booking_time') }}"
+                                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:ring-0 focus:border-[#D92323] transition-all text-sm font-black text-gray-800 shadow-sm">
+                                            @error('booking_time')
+                                                <p class="text-red-600 text-[10px] font-black uppercase mt-2 italic tracking-wider">⚠️ {{ $message }}</p>
+                                            @enderror
+                                        </div>
                                     </div>
                                 </div>
 
@@ -276,7 +287,7 @@
                                             </p>
                                         </div>
 
-                                    {{-- 2. JIKA SUDAH SELESAI KERJA TAPI BELUM PELUNASAN (PRIORITAS PERTAMA SETELAH SELESAI) --}}
+                                    {{-- 2. JIKA SUDAH SELESAI KERJA TAPI BELUM PELUNASAN --}}
                                     @elseif($order->status == 'completed' && $order->payment_status == 'unpaid')
                                         <div class="space-y-3">
                                             <div class="p-3 bg-orange-50 border-2 border-dashed border-orange-300 rounded-2xl text-center">

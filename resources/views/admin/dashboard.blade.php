@@ -74,12 +74,26 @@
                 </div>
             </div>
 
-            {{-- ESTIMASI TOTAL OMZET - BANNER HITAM KUNING (Sesuai Layout Foto) --}}
-            <div class="bg-[#1A1A1A] p-8 rounded-2xl border-2 border-[#1A1A1A] shadow-[6px_6px_0px_#D92323] mb-10">
-                <p class="text-xs font-black text-[#FFD700] uppercase tracking-[0.2em]">Estimasi Total Omzet (Auto Sum)</p>
-                <h3 class="text-5xl font-black text-white mt-2 tracking-tight">
-                    Rp {{ number_format($orders->where('payment_status', 'paid')->sum('total_price'), 0, ',', '.') }}
-                </h3>
+            {{-- ESTIMASI OMZET (BULANAN & TOTAL) --}}
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
+                {{-- Omzet Bulan Ini (Reset Tiap Bulan) --}}
+                <div class="bg-white p-8 rounded-2xl border-2 border-[#1A1A1A] shadow-[6px_6px_0px_#D92323] relative overflow-hidden group hover:border-[#D92323] transition-all">
+                    <div class="flex justify-between items-start mb-2">
+                        <p class="text-xs font-black text-gray-500 uppercase tracking-[0.2em]">Omzet Bulan Ini</p>
+                        <span class="px-3 py-1 bg-red-100 text-[#D92323] text-[10px] font-black rounded uppercase tracking-wider">{{ now()->translatedFormat('F Y') }}</span>
+                    </div>
+                    <h3 class="text-4xl font-black text-[#1A1A1A] mt-2 tracking-tight">
+                        Rp {{ number_format($orders->where('payment_status', 'paid')->filter(fn($order) => \Carbon\Carbon::parse($order->created_at)->isCurrentMonth())->sum('total_price'), 0, ',', '.') }}
+                    </h3>
+                </div>
+
+                {{-- Estimasi Total Omzet (All Time) --}}
+                <div class="bg-[#1A1A1A] p-8 rounded-2xl border-2 border-[#1A1A1A] shadow-[6px_6px_0px_#FFD700]">
+                    <p class="text-xs font-black text-[#FFD700] uppercase tracking-[0.2em]">Total Omzet Keseluruhan</p>
+                    <h3 class="text-4xl font-black text-white mt-2 tracking-tight">
+                        Rp {{ number_format($orders->where('payment_status', 'paid')->sum('total_price'), 0, ',', '.') }}
+                    </h3>
+                </div>
             </div>
 
             <div class="mb-10">
@@ -104,7 +118,7 @@
                         <svg class="w-5 h-5 text-gray-400 group-hover:text-gray-800 transition-colors" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="3" d="M14 5l7 7m0 0l-7 7m7-7H3"></path></svg>
                     </a>
 
-                    <a href="https://drive.google.com/your-link-here" target="_blank" class="group bg-[#D1D5DB] p-6 rounded-xl shadow-sm border-2 border-transparent hover:border-gray-400 transition-all flex items-center justify-between">
+                    <a href="#" target="_blank" class="group bg-[#D1D5DB] p-6 rounded-xl shadow-sm border-2 border-transparent hover:border-gray-400 transition-all flex items-center justify-between">
                         <div class="flex items-center gap-4">
                             <div class="p-3 bg-white/50 rounded-lg group-hover:bg-white transition-colors">
                                 <svg class="w-8 h-8 text-gray-700" fill="currentColor" viewBox="0 0 24 24">
@@ -162,7 +176,6 @@
                                 </td>
                                 <td class="px-6 py-6">
                                     <div class="flex flex-wrap gap-1">
-                                        {{-- FUNGSI MULTI-SERVICE TETAP JALAN --}}
                                         @foreach($order->services as $svc)
                                             <span class="bg-gray-100 border border-gray-200 px-2 py-0.5 rounded text-[9px] font-black uppercase text-gray-600">{{ $svc->name }}</span>
                                         @endforeach
