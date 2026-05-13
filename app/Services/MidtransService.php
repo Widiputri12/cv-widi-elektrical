@@ -34,9 +34,9 @@ class MidtransService
         $params = [
             'transaction_details' => [
                 'order_id' => 'ORDER-' . $order->id . '-' . time(), 
-                // GANTI INI: Gunakan variabel $amountToPay
-                'gross_amount' => $amountToPay, 
-            ],
+                'gross_amount' => (int) $amountToPay, // Pastikan di-cast ke (int)
+            ], 
+            
             'item_details' => [
                 [
                     // ID item dinamis (DP-1 atau FULL-1)

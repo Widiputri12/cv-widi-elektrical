@@ -295,6 +295,12 @@
                                             </p>
                                         </div>
 
+                                        @if(!$order->snap_token && $order->payment_status == 'unpaid')
+                                            <p class="text-[9px] text-red-500 font-bold mt-2">
+                                                ⚠️ Token Pembayaran belum siap. Silakan lapor admin.
+                                            </p>
+                                        @endif
+
                                     {{-- 2. JIKA SUDAH SELESAI KERJA TAPI BELUM PELUNASAN --}}
                                     @elseif($order->status == 'completed' && $order->payment_status == 'unpaid')
                                         <div class="space-y-3">
