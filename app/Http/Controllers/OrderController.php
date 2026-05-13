@@ -29,6 +29,7 @@ class OrderController extends Controller
             ],
             'service_ids' => 'required|array|min:1',
             'service_ids.*' => 'exists:services,id',
+            'quantity' => 'required|integer|min:1', // <-- TAMBAHAN: Validasi Quantity
             'booking_date' => 'required|date|after_or_equal:today',
             'booking_time' => 'required',
             'address_detail' => 'required|string|min:10',
@@ -41,14 +42,34 @@ class OrderController extends Controller
             'service_ids.required' => 'Silakan pilih minimal satu layanan!',
         ]);
 
+        // --- TAMBAHAN: LOGIKA MESIN WAKTU ---
+        // (Pastikan kamu sudah menambahkan: use Carbon\Carbon; 
+        // dan use Illuminate\Validation\ValidationException; di bagian paling atas file ini)
+        $bookingDate = \Carbon\Carbon::parse($request->booking_date);
+        
+        if ($bookingDate->isToday()) {
+            $bookingDateTime = \Carbon\Carbon::parse($request->booking_date . ' ' . $request->booking_time, 'Asia/Jakarta');
+            
+            if ($bookingDateTime->isPast()) {
+                throw \Illuminate\Validation\ValidationException::withMessages([
+                    'booking_time' => 'Waktu pesanan untuk hari ini tidak boleh kurang dari jam saat ini.'
+                ]);
+            }
+        }
+        // -------------------------------------
+
         $services = Service::whereIn('id', $request->service_ids)->get();
-        $totalPrice = $services->sum('price');
+        
+        // --- UBAHAN: KALKULASI HARGA DENGAN QUANTITY ---
+        $basePrice = $services->sum('price');
+        $totalPrice = $basePrice * $request->quantity; // Dikalikan jumlah AC
         
         $dpAmount = $totalPrice * 0.5;
         $remainingBalance = $totalPrice - $dpAmount;
 
         $order = Order::create([
             'user_id' => $user->id,
+            'quantity' => $request->quantity, // <-- TAMBAHAN: Simpan ke DB
             'booking_date' => $request->booking_date,
             'booking_time' => $request->booking_time,
             'address_detail' => $request->address_detail,
@@ -67,20 +88,21 @@ class OrderController extends Controller
 
         // GENERATE TOKEN DP SEKARANG (Agar tombol bayar langsung muncul)
         try {
-            $snapToken = $midtrans->getSnapToken($order); //
-            $order->update(['snap_token' => $snapToken]); //
-            Log::info("Snap Token DP Berhasil: " . $snapToken); //
+            $snapToken = $midtrans->getSnapToken($order); 
+            $order->update(['snap_token' => $snapToken]); 
+            \Log::info("Snap Token DP Berhasil: " . $snapToken); 
         } catch (\Exception $e) {
-            Log::error('Gagal buat token DP: ' . $e->getMessage()); //
+            \Log::error('Gagal buat token DP: ' . $e->getMessage()); 
         }
 
         $serviceNames = $services->pluck('name')->implode(', ');
         $pesanAdmin = "🚨 *ORDER BARU (MENUNGGU DP)!* 🚨\n\n";
         $pesanAdmin .= "👤 Nama: {$user->name}\n";
-        $pesanAdmin .= "🛠️ Layanan: {$serviceNames}\n";
+        // --- UBAHAN: Menampilkan jumlah AC di notif WA ---
+        $pesanAdmin .= "🛠️ Layanan: {$serviceNames} ({$request->quantity} Unit)\n";
         $pesanAdmin .= "💰 Total: Rp " . number_format($totalPrice, 0, ',', '.') . "\n";
         $pesanAdmin .= "💵 DP 50%: Rp " . number_format($dpAmount, 0, ',', '.') . "\n";
-        $pesanAdmin .= "📅 Jadwal: " . date('d M Y', strtotime($order->booking_date)) . "\n\n";
+        $pesanAdmin .= "📅 Jadwal: " . date('d M Y', strtotime($order->booking_date)) . " jam " . date('H:i', strtotime($order->booking_time)) . "\n\n";
         $pesanAdmin .= "Pesanan masuk sistem, menunggu pembayaran DP dari pelanggan.";
 
         $admins = User::where('role', 'admin')->get();

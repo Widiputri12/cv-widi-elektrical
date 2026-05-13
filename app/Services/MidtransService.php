@@ -17,11 +17,15 @@ class MidtransService
 
     public function getSnapToken($order)
     {
-        // 1. Tentukan nominal berdasarkan tahapan (DP 50% atau Pelunasan 50%)
+        // 1. Tentukan nominal berdasarkan tahapan (DP atau Pelunasan)
         $amountToPay = ($order->payment_step == 'dp') 
                         ? (int) $order->dp_amount 
                         : (int) $order->remaining_balance;
 
+        // 2. Tentukan nama item agar struk Midtrans jelas
+        $itemName = ($order->payment_step == 'dp')
+                        ? 'DP 50% Layanan AC (' . $order->quantity . ' Unit)'
+                        : 'Pelunasan Layanan AC (' . $order->quantity . ' Unit)';
 
         if ($amountToPay <= 0) {
             $amountToPay = (int) ($order->total_price * 0.5);
@@ -29,30 +33,28 @@ class MidtransService
 
         $params = [
             'transaction_details' => [
-                'order_id' => $order->id . '-' . $order->payment_step . '-' . time(), 
-                'gross_amount' => $amountToPay,
-            ],
-            'customer_details' => [
-                'first_name' => $order->user->name,
-                'email' => $order->user->email,
-                'phone' => $order->user->phone,
+                'order_id' => 'ORDER-' . $order->id . '-' . time(), 
+                // GANTI INI: Gunakan variabel $amountToPay
+                'gross_amount' => $amountToPay, 
             ],
             'item_details' => [
                 [
-                    'id' => 'ITEM-' . $order->id,
-                    'price' => $amountToPay,
-                    'quantity' => 1,
-                    'name' => ($order->payment_step == 'dp') 
-                                ? "DP 50% - Order #{$order->id}" 
-                                : "Pelunasan - Order #{$order->id}",
+                    // ID item dinamis (DP-1 atau FULL-1)
+                    'id'       => strtoupper($order->payment_step) . '-' . $order->id, 
+                    // GANTI INI: Gunakan variabel $amountToPay
+                    'price'    => $amountToPay, 
+                    'quantity' => 1, 
+                    // GANTI INI: Gunakan variabel $itemName
+                    'name'     => $itemName 
                 ]
             ],
-            'enabled_payments' => [
-                'credit_card', 'gopay', 'shopeepay', 'permata_va', 
-                'bca_va', 'bni_va', 'bri_va', 'other_va'
+            'customer_details' => [
+                'first_name' => $order->user->name,
+                'email'      => $order->user->email,
+                'phone'      => $order->user->phone,
             ],
         ];
 
-        return Snap::getSnapToken($params);
+        return \Midtrans\Snap::getSnapToken($params);
     }
 }

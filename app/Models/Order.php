@@ -16,7 +16,9 @@ class Order extends Model
      */
     protected $fillable = [
         'user_id',
-        'technician_id', // Dibiarkan saja untuk jaga-jaga data lama
+        // 'service_id', 
+        'quantity',
+        // 'technician_id', 
         'booking_date',
         'booking_time',
         'address_detail',
@@ -33,30 +35,23 @@ class Order extends Model
         'cancel_notes',
     ];
 
-    /**
-     * Relasi ke Pelanggan (Customer)
-     * Satu pesanan dimiliki oleh satu pelanggan
-     */
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
     }
 
-    /**
-     * ✅ INI OBAT ERRORNYA: Relasi ke Tim Teknisi (Many-to-Many)
-     * Satu pesanan bisa dikerjakan oleh banyak teknisi
-     */
     public function technicians(): BelongsToMany
     {
         return $this->belongsToMany(User::class, 'order_user');
     }
 
-    /**
-     * Relasi ke Layanan (Services)
-     * Satu pesanan bisa memiliki banyak jenis layanan (Cuci AC, Freon, dll)
-     */
     public function services(): BelongsToMany
     {
-        return $this->belongsToMany(Service::class, 'order_service'); // Pastikan nama tabel pivot servicenya benar (biasanya order_service)
+        return $this->belongsToMany(Service::class, 'order_service'); 
+    }
+
+    public function schedules()
+    {
+        return $this->hasMany(Schedule::class);
     }
 }
