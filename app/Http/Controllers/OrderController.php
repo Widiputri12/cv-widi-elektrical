@@ -25,8 +25,7 @@ class OrderController extends Controller
             'phone' => ['required', 'numeric', 'in:' . $user->phone],
             'service_ids' => 'required|array|min:1',
             'service_ids.*' => 'exists:services,id',
-            // Validasi input service_qty array
-            'service_qty' => 'required|array',
+            'service_qty' => 'required|array', // Validasi input quantity per layanan
             'booking_date' => 'required|date|after_or_equal:today',
             'booking_time' => 'required',
             'address_detail' => 'required|string|min:10',
@@ -39,13 +38,11 @@ class OrderController extends Controller
             'service_ids.required' => 'Silakan pilih minimal satu layanan!',
         ]);
 
-        // --- TAMBAHAN: LOGIKA MESIN WAKTU ---
-        // (Pastikan kamu sudah menambahkan: use Carbon\Carbon; 
-        // dan use Illuminate\Validation\ValidationException; di bagian paling atas file ini)
-        $bookingDate = \Carbon\Carbon::parse($request->booking_date);
+        // --- LOGIKA MESIN WAKTU ---
+        $bookingDate = Carbon::parse($request->booking_date);
         
         if ($bookingDate->isToday()) {
-            $bookingDateTime = \Carbon\Carbon::parse($request->booking_date . ' ' . $request->booking_time, 'Asia/Jakarta');
+            $bookingDateTime = Carbon::parse($request->booking_date . ' ' . $request->booking_time, 'Asia/Jakarta');
             
             if ($bookingDateTime->isPast()) {
                 throw \Illuminate\Validation\ValidationException::withMessages([
@@ -53,79 +50,65 @@ class OrderController extends Controller
                 ]);
             }
         }
-        // -------------------------------------
 
+        // --- KALKULASI HARGA DINAMIS BERDASARKAN QTY TIAP LAYANAN ---
         $services = Service::whereIn('id', $request->service_ids)->get();
-            
-            $totalPrice = 0;
-            $totalAllItems = 0; // Untuk mencatat total unit keseluruhan
-            $pivotData = []; // Untuk simpan ke tabel relasi
-            $serviceDetailsForWa = []; // Untuk teks di WA
+        $totalPrice = 0;
+        $totalAllItems = 0;
+        $pivotData = [];
+        $serviceDetailsForWa = [];
 
-            foreach ($services as $service) {
-                // Ambil jumlah berdasarkan ID layanannya (default 1 jika kosong)
-                $qty = $request->service_qty[$service->id] ?? 1;
-                
-                // Harga per layanan = Harga asli x Jumlah
-                $totalPrice += ($service->price * $qty);
-                $totalAllItems += $qty;
-                
-                // Siapkan data untuk tabel pivot order_service
-                $pivotData[$service->id] = ['quantity' => $qty];
-                
-                // Siapkan teks untuk WA Admin (Contoh: Cuci AC (3x), Tambah Freon (1x))
-                $serviceDetailsForWa[] = "{$service->name} ({$qty}x)";
-            }
-            
-            $dpAmount = round($totalPrice * 0.5);
-            $remainingBalance = $totalPrice - $dpAmount;
+        foreach ($services as $service) {
+            $qty = $request->service_qty[$service->id] ?? 1;
+            $totalPrice += ($service->price * $qty);
+            $totalAllItems += $qty;
+            $pivotData[$service->id] = ['quantity' => $qty];
+            $serviceDetailsForWa[] = "{$service->name} ({$qty}x)";
+        }
+        
+        $dpAmount = round($totalPrice * 0.5);
+        $remainingBalance = $totalPrice - $dpAmount;
 
-            $order = Order::create([
-                'user_id' => $user->id,
-                'quantity' => $totalAllItems, // Total seluruh unit disatukan
-                'booking_date' => $request->booking_date,
-                'booking_time' => $request->booking_time,
-                'address_detail' => $request->address_detail,
-                'latitude' => $request->latitude,
-                'longitude' => $request->longitude,
-                'notes' => $request->notes ?? '', // Tambahkan fallback string kosong
-                'total_price' => $totalPrice,
-                'dp_amount' => $dpAmount, 
-                'remaining_balance' => $remainingBalance,
-                'status' => 'pending',        
-                'payment_status' => 'unpaid', 
-                'payment_step' => 'dp', 
-            ]);
+        $order = Order::create([
+            'user_id' => $user->id,
+            'quantity' => $totalAllItems, 
+            'booking_date' => $request->booking_date,
+            'booking_time' => $request->booking_time,
+            'address_detail' => $request->address_detail,
+            'latitude' => $request->latitude,
+            'longitude' => $request->longitude,
+            'notes' => $request->notes ?? '', 
+            'total_price' => $totalPrice,
+            'dp_amount' => $dpAmount, 
+            'remaining_balance' => $remainingBalance,
+            'status' => 'pending',        
+            'payment_status' => 'unpaid', 
+            'payment_step' => 'dp', 
+        ]);
 
         $order->services()->sync($pivotData);
 
-        // GENERATE TOKEN DP SEKARANG (Agar tombol bayar langsung muncul)
+        // GENERATE TOKEN DP
         try {
             $snapToken = $midtrans->getSnapToken($order); 
             $order->update(['snap_token' => $snapToken]); 
-            \Log::info("Snap Token DP Berhasil: " . $snapToken); 
         } catch (\Exception $e) {
-            \Log::error('Gagal buat token DP: ' . $e->getMessage()); 
+            Log::error('Gagal buat token DP: ' . $e->getMessage()); 
         }
 
-        $serviceNames = $services->pluck('name')->implode(', ');
+        // NOTIF WA KE ADMIN
+        $serviceNamesWa = implode(', ', $serviceDetailsForWa);
         $pesanAdmin = "🚨 *ORDER BARU (MENUNGGU DP)!* 🚨\n\n";
         $pesanAdmin .= "👤 Nama: {$user->name}\n";
-        // --- UBAHAN: Menampilkan jumlah AC di notif WA ---
-        $pesanAdmin .= "🛠️ Layanan: {$serviceNames} ({$totalAllItems} Unit)\n";
+        $pesanAdmin .= "🛠️ Layanan: {$serviceNamesWa}\n";
         $pesanAdmin .= "💰 Total: Rp " . number_format($totalPrice, 0, ',', '.') . "\n";
         $pesanAdmin .= "💵 DP 50%: Rp " . number_format($dpAmount, 0, ',', '.') . "\n";
-        $pesanAdmin .= "📅 Jadwal: " . date('d M Y', strtotime($order->booking_date)) . " jam " . date('H:i', strtotime($order->booking_time)) . "\n\n";
-        $pesanAdmin .= "Pesanan masuk sistem, menunggu pembayaran DP dari pelanggan.";
+        $pesanAdmin .= "📅 Jadwal: " . date('d M Y', strtotime($order->booking_date)) . " jam " . $order->booking_time . "\n\n";
+        $pesanAdmin .= "Pesanan masuk sistem, menunggu pembayaran DP.";
 
-        $admins = User::where('role', 'admin')->get();
-        foreach ($admins as $admin) {
-            if (!empty($admin->phone)) { 
-                $fonnte->sendMessage($admin->phone, $pesanAdmin);
-            }
-        }
+        $this->sendToAdmins($fonnte, $pesanAdmin);
 
-        return redirect()->route('dashboard')->with('success', 'Order berhasil! Silakan bayar DP 50% di Riwayat Servis agar teknisi kami proses.'); 
+        return redirect()->route('dashboard')->with('success', 'Order berhasil! Silakan bayar DP 50% di Riwayat Servis.'); 
     }
 
     /**
@@ -150,30 +133,36 @@ class OrderController extends Controller
         ]);
 
         $order = Order::with('user')->findOrFail($id);
-                $order->technicians()->sync($request->technician_ids);
+        $order->technicians()->sync($request->technician_ids);
         $order->update(['status' => 'confirmed']);
-        $assignedTechs = User::whereIn('id', $request->technician_ids)->get();
 
+        // --- REVISI: Simpan data ke tabel Schedules ---
+        // Hapus jadwal lama jika ada plotting ulang
+        Schedule::where('order_id', $id)->delete();
+
+        foreach ($request->technician_ids as $techId) {
+            Schedule::create([
+                'order_id' => $order->id,
+                'technician_id' => $techId,
+                'work_date' => $order->booking_date,
+                'start_time' => $order->booking_time,
+                'status' => 'Scheduled'
+            ]);
+        }
+
+        // Kirim Notifikasi WA (Logika sama seperti sebelumnya)
+        $assignedTechs = User::whereIn('id', $request->technician_ids)->get();
         $techNames = [];
 
         foreach ($assignedTechs as $tech) {
-            $tech->update(['is_busy' => 1]); 
-            
             $techNames[] = $tech->name;
-
             if (!empty($tech->phone)) {
-                $pesanTeknisi = "📢 *TUGAS BARU!* 📢\n\nHalo *{$tech->name}*,\n\nAnda ditugaskan untuk Order #{$order->id}.\nPelanggan: *{$order->user->name}*\nLokasi: {$order->address_detail}\n\nSegera cek dashboard teknisi untuk melihat detail pengerjaan!";
+                $pesanTeknisi = "📢 *TUGAS BARU!* 📢\n\nHalo *{$tech->name}*,\n\nAnda ditugaskan untuk Order #{$order->id}.\nPelanggan: *{$order->user->name}*\nJadwal: " . date('d M Y', strtotime($order->booking_date)) . " Jam {$order->booking_time}\nLokasi: {$order->address_detail}";
                 $fonnte->sendMessage($tech->phone, $pesanTeknisi);
             }
         }
 
-        if ($order->user && !empty($order->user->phone)) {
-            $daftarTeknisi = implode(', ', $techNames);
-            $pesanPelanggan = "✅ *PESANAN DIKONFIRMASI* ✅\n\nHalo *{$order->user->name}*,\n\nOrder #{$order->id} Anda telah dikonfirmasi oleh Admin.\n\n*Tim Teknisi Bertugas:* \n- {$daftarTeknisi}\n\nTeknisi kami segera meluncur ke lokasi Anda. Terima kasih!";
-            $fonnte->sendMessage($order->user->phone, $pesanPelanggan);
-        }
-
-        return back()->with('success', 'Tim Teknisi berhasil ditugaskan dan notifikasi WA telah terkirim!');
+        return back()->with('success', 'Tim Teknisi berhasil ditugaskan!');
     }
 
     /**
@@ -286,39 +275,33 @@ class OrderController extends Controller
      */
     public function laporan(Request $request)
     {
-        // 1. Mulai Query dengan relasi
         $query = Order::with(['user', 'services']);
 
-        // 2. Filter berdasarkan Tanggal Mulai
-        if ($request->has('start_date') && $request->start_date) {
+        if ($request->start_date) {
             $query->whereDate('created_at', '>=', $request->start_date);
         }
 
-        // 3. Filter berdasarkan Tanggal Selesai
-        if ($request->has('end_date') && $request->end_date) {
+        if ($request->end_date) {
             $query->whereDate('created_at', '<=', $request->end_date);
         }
 
-        // 4. Filter berdasarkan Status (Completed/Cancelled)
-        if ($request->has('status') && $request->status) {
+        if ($request->status) {
             $query->where('status', $request->status);
         }
 
-        // 5. Eksekusi data terbaru
         $orders = $query->latest()->get();
 
-        // 6. Hitung Total Pendapatan dari hasil filter (Hanya yang lunas/paid)
-        // Jika statusnya 'cancelled', biasanya tidak dihitung ke pendapatan
+        // --- PERBAIKAN: Menggunakan sum() bukan .sum() ---
         $totalPendapatan = $orders->where('payment_status', 'paid')
-                                ->where('status', '!=', 'cancelled')
-                                .sum('total_price');
+                                  ->where('status', '!=', 'cancelled')
+                                  ->sum('total_price');
 
         return view('admin.laporan.index', compact('orders', 'totalPendapatan'));
     }
 
     // Tambahkan helper function ini di bawah class (agar kode rapi)
     private function sendToAdmins($fonnte, $message) {
-        $admins = \App\Models\User::where('role', 'admin')->get();
+        $admins = User::where('role', 'admin')->get();
         foreach ($admins as $admin) {
             if (!empty($admin->phone)) {
                 $fonnte->sendMessage($admin->phone, $message);
