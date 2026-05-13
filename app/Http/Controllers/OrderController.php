@@ -275,28 +275,36 @@ class OrderController extends Controller
      */
     public function laporan(Request $request)
     {
-        $query = Order::with(['user', 'services']);
+        // 1. Ambil semua daftar layanan untuk isi dropdown di filter
+        $allServices = Service::all();
 
+        // 2. Mulai query Order
+        $query = Order::with(['user', 'services', 'technicians']);
+
+        // Filter Tanggal Mulai & Selesai (Tetap dipertahankan karena penting)
         if ($request->start_date) {
             $query->whereDate('created_at', '>=', $request->start_date);
         }
-
         if ($request->end_date) {
             $query->whereDate('created_at', '<=', $request->end_date);
         }
 
-        if ($request->status) {
-            $query->where('status', $request->status);
+        // --- LOGIKA FILTER LAYANAN (TERBARU) ---
+        if ($request->service_id) {
+            $query->whereHas('services', function($q) use ($request) {
+                $q->where('services.id', $request->service_id);
+            });
         }
 
         $orders = $query->latest()->get();
 
-        // --- PERBAIKAN: Menggunakan sum() bukan .sum() ---
+        // Hitung total pendapatan dari hasil filter
         $totalPendapatan = $orders->where('payment_status', 'paid')
-                                  ->where('status', '!=', 'cancelled')
-                                  ->sum('total_price');
+                                ->where('status', '!=', 'cancelled')
+                                ->sum('total_price');
 
-        return view('admin.laporan.index', compact('orders', 'totalPendapatan'));
+        // Kirim $allServices ke view
+        return view('admin.laporan.index', compact('orders', 'totalPendapatan', 'allServices'));
     }
 
     // Tambahkan helper function ini di bawah class (agar kode rapi)

@@ -13,33 +13,39 @@
     <div class="py-4 bg-white min-h-screen print:py-0">
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
             
-            {{-- KOTAK FILTER (Akan hilang saat diprint) --}}
-            <div class="mb-6 bg-gray-50 border-2 border-[#1A1A1A] p-5 print:hidden rounded-xl shadow-sm">
-                <h3 class="text-[12px] font-black text-[#1A1A1A] uppercase mb-4 tracking-widest border-b-2 border-gray-200 pb-2">Filter Data Laporan</h3>
-                <form action="{{ route('admin.laporan') }}" method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-2 tracking-wider">Mulai Tanggal</label>
-                        <input type="date" name="start_date" value="{{ request('start_date') }}" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#D92323] focus:ring-0 font-bold">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-2 tracking-wider">Sampai Tanggal</label>
-                        <input type="date" name="end_date" value="{{ request('end_date') }}" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#D92323] focus:ring-0 font-bold">
-                    </div>
-                    <div>
-                        <label class="block text-[10px] font-bold text-gray-700 uppercase mb-2 tracking-wider">Status</label>
-                        <select name="status" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#D92323] focus:ring-0 font-bold cursor-pointer">
-                            <option value="">Semua Status</option>
-                            <option value="completed" {{ request('status') == 'completed' ? 'selected' : '' }}>Selesai</option>
-                            <option value="cancelled" {{ request('status') == 'cancelled' ? 'selected' : '' }}>Dibatalkan</option>
-                        </select>
-                    </div>
-                    <div>
-                        <button type="submit" class="w-full bg-[#1A1A1A] text-white font-black text-[11px] uppercase tracking-widest py-3 rounded-lg hover:bg-[#D92323] transition-colors shadow-sm">
-                            Terapkan Filter
-                        </button>
-                    </div>
-                </form>
-            </div>
+        {{-- KOTAK FILTER --}}
+        <div class="mb-6 bg-gray-50 border-2 border-[#1A1A1A] p-5 print:hidden rounded-xl shadow-sm">
+            <h3 class="text-[12px] font-black text-[#1A1A1A] uppercase mb-4 tracking-widest border-b-2 border-gray-200 pb-2">Filter Data Laporan</h3>
+            <form action="{{ route('admin.laporan.index') }}" method="GET" class="grid grid-cols-1 md:grid-cols-4 gap-4 items-end">
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-700 uppercase mb-2 tracking-wider">Mulai Tanggal</label>
+                    <input type="date" name="start_date" value="{{ request('start_date') }}" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#D92323] focus:ring-0 font-bold">
+                </div>
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-700 uppercase mb-2 tracking-wider">Sampai Tanggal</label>
+                    <input type="date" name="end_date" value="{{ request('end_date') }}" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#D92323] focus:ring-0 font-bold">
+                </div>
+                
+                {{-- FILTER BERDASARKAN LAYANAN (GANTI DI SINI) --}}
+                <div>
+                    <label class="block text-[10px] font-bold text-gray-700 uppercase mb-2 tracking-wider">Jenis Layanan</label>
+                    <select name="service_id" class="w-full border-2 border-gray-200 rounded-lg px-3 py-2 text-sm focus:border-[#D92323] focus:ring-0 font-bold cursor-pointer">
+                        <option value="">Semua Layanan</option>
+                        @foreach($allServices as $svc)
+                            <option value="{{ $svc->id }}" {{ request('service_id') == $svc->id ? 'selected' : '' }}>
+                                {{ $svc->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <button type="submit" class="w-full bg-[#1A1A1A] text-white font-black text-[11px] uppercase tracking-widest py-3 rounded-lg hover:bg-[#D92323] transition-colors shadow-sm">
+                        Terapkan Filter
+                    </button>
+                </div>
+            </form>
+        </div>
 
             {{-- AREA LAPORAN --}}
             <div class="bg-white border border-[#1A1A1A] print:border-none">
