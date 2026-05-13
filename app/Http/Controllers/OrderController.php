@@ -1,9 +1,5 @@
 <?php
-/tes/*
- * Controller ini menangani seluruh alur pemesanan, mulai dari pembuatan order oleh customer, penugasan teknisi oleh admin, hingga penyelesaian tugas oleh teknisi.
- * FonnteService digunakan untuk mengirim notifikasi WhatsApp ke pelanggan, admin, dan teknisi terkait status pesanan.
- * MidtransService digunakan untuk mengelola pembayaran DP dan pelunasan secara otomatis.
- */
+
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
