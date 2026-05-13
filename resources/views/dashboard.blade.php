@@ -48,6 +48,7 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
             @if(Auth::user()->role === 'admin')
+                {{-- KODE VIEW ADMIN (Tetap Sama) --}}
                 @php $pendingGallery = \App\Models\Gallery::where('status', 'pending')->count(); @endphp
                 @if($pendingGallery > 0)
                 <div class="mb-8 bg-[#FFD700]/20 border-l-4 border-[#FFD700] rounded-r-xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
@@ -119,6 +120,7 @@
                 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 
                 <div class="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                    {{-- SISI KIRI: FORM ORDER --}}
                     <div class="lg:col-span-2">
                         <div class="bg-[#D92323] rounded-t-3xl p-8 text-white relative overflow-hidden">
                             <h3 class="font-black text-xl text-[#FFD700] uppercase tracking-widest mb-1">Formulir Panggilan</h3>
@@ -129,7 +131,9 @@
                         <div class="bg-white border-2 border-t-0 border-[#1A1A1A] rounded-b-3xl p-8 shadow-[6px_6px_0px_#1A1A1A]">
                             <form action="{{ route('orders.store') }}" method="POST">
                                 @csrf
-                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+                                
+                                {{-- Identitas --}}
+                                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
                                     <div>
                                         <label class="block text-[11px] font-black text-gray-500 uppercase mb-2 tracking-widest">Nama Pelanggan</label>
                                         <input type="text" value="{{ Auth::user()->name }}" class="w-full bg-gray-100 border-2 border-gray-200 rounded-xl text-sm font-bold p-3 cursor-not-allowed" readonly>
@@ -145,13 +149,12 @@
                                     </div>
                                 </div>
 
+                                {{-- Multi-Quantity Services --}}
                                 <div class="mb-6">
                                     <label class="block text-[11px] font-black text-[#1A1A1A] uppercase mb-3 tracking-widest">Pilih Layanan & Jumlah *</label>
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         @foreach($services as $service)
                                         <div class="relative flex items-center justify-between p-4 border-2 border-gray-200 rounded-2xl transition-all group hover:border-[#D92323] has-[:checked]:border-[#D92323] has-[:checked]:bg-red-50 shadow-sm">
-                                            
-                                            {{-- Checkbox Layanan --}}
                                             <label class="flex items-center cursor-pointer flex-1">
                                                 <input type="checkbox" name="service_ids[]" value="{{ $service->id }}" 
                                                     class="service-checkbox w-5 h-5 text-[#D92323] border-2 border-gray-300 rounded focus:ring-0 cursor-pointer"
@@ -161,8 +164,6 @@
                                                     <p class="text-[11px] font-bold text-[#D92323]">Rp {{ number_format($service->price, 0, ',', '.') }}</p>
                                                 </div>
                                             </label>
-
-                                            {{-- Input Jumlah (Akan aktif kalau dicentang) --}}
                                             <div class="w-20">
                                                 <input type="number" name="service_qty[{{ $service->id }}]" id="qty_{{ $service->id }}" value="1" min="1" disabled
                                                     class="w-full px-2 py-2 border-2 border-gray-300 rounded-xl focus:ring-0 focus:border-[#D92323] text-center text-sm font-black text-gray-800 shadow-sm disabled:bg-gray-100 disabled:text-gray-400">
@@ -175,15 +176,7 @@
                                     @enderror
                                 </div>
 
-                                {{-- Script Mungil untuk mengaktifkan input jumlah --}}
-                                <script>
-                                    function toggleQty(checkbox, id) {
-                                        const qtyInput = document.getElementById('qty_' + id);
-                                        qtyInput.disabled = !checkbox.checked;
-                                        if(!checkbox.checked) qtyInput.value = 1; // Reset ke 1 kalau centang dilepas
-                                    }
-                                </script>
-
+                                {{-- Tanggal & Jam --}}
                                 <div class="mb-6">
                                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                                         <div>
@@ -194,18 +187,28 @@
                                                 <p class="text-red-600 text-[10px] font-black uppercase mt-2 italic tracking-wider">⚠️ {{ $message }}</p>
                                             @enderror
                                         </div>
-                                        
                                         <div>
                                             <label class="block text-[11px] font-black text-[#1A1A1A] uppercase mb-3 tracking-widest">Jam Pengerjaan *</label>
-                                            <input type="time" name="booking_time" value="{{ old('booking_time') }}"
-                                                class="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:ring-0 focus:border-[#D92323] transition-all text-sm font-black text-gray-800 shadow-sm">
+                                            <select name="booking_time" class="w-full px-4 py-3 border-2 border-gray-200 rounded-2xl focus:ring-0 focus:border-[#D92323] transition-all text-sm font-black text-gray-800 shadow-sm cursor-pointer">
+                                                <option value="08:00">08:00 WIB</option>
+                                                <option value="09:00">09:00 WIB</option>
+                                                <option value="10:00">10:00 WIB</option>
+                                                <option value="11:00">11:00 WIB</option>
+                                                <option value="13:00">13:00 WIB</option>
+                                                <option value="14:00">14:00 WIB</option>
+                                                <option value="15:00">15:00 WIB</option>
+                                                <option value="16:00">16:00 WIB</option>
+                                                <option value="17:00">17:00 WIB</option>
+                                            </select>
                                             @error('booking_time')
                                                 <p class="text-red-600 text-[10px] font-black uppercase mt-2 italic tracking-wider">⚠️ {{ $message }}</p>
                                             @enderror
+                                            <p class="text-[9px] text-gray-400 font-bold mt-2 italic leading-tight">* Operasional: Senin-Sabtu (08.00-17.00). Untuk hari ini minimal 6 jam dari sekarang.</p>
                                         </div>
                                     </div>
                                 </div>
 
+                                {{-- Map & Lokasi --}}
                                 <div class="mb-6 bg-gray-50 p-4 rounded-2xl border-2 border-dashed border-gray-300">
                                     <div class="flex justify-between items-center mb-3">
                                         <label class="text-[11px] font-black text-[#1A1A1A] uppercase tracking-widest">Lokasi GPS *</label>
@@ -217,15 +220,9 @@
                                             <svg xmlns="http://www.w3.org/2000/svg" class="h-10 w-10" viewBox="0 0 20 20" fill="currentColor"><path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd" /></svg>
                                         </div>
                                     </div>
-                                    <div class="grid grid-cols-2 gap-3 mb-3">
-                                        <div>
-                                            <input type="text" id="latitude" name="latitude" value="{{ old('latitude') }}" class="w-full bg-gray-100 border-0 rounded-lg text-xs font-mono text-center p-2" readonly placeholder="Lat">
-                                            @error('latitude') <p class="text-red-600 text-[9px] font-black italic">Pin Lokasi Wajib</p> @enderror
-                                        </div>
-                                        <div>
-                                            <input type="text" id="longitude" name="longitude" value="{{ old('longitude') }}" class="w-full bg-gray-100 border-0 rounded-lg text-xs font-mono text-center p-2" readonly placeholder="Lng">
-                                            @error('longitude') <p class="text-red-600 text-[9px] font-black italic">Pin Lokasi Wajib</p> @enderror
-                                        </div>
+                                    <div class="grid grid-cols-2 gap-3 mb-4">
+                                        <input type="text" id="latitude" name="latitude" value="{{ old('latitude') }}" class="w-full bg-gray-100 border-0 rounded-lg text-xs font-mono text-center p-2" readonly placeholder="Lat">
+                                        <input type="text" id="longitude" name="longitude" value="{{ old('longitude') }}" class="w-full bg-gray-100 border-0 rounded-lg text-xs font-mono text-center p-2" readonly placeholder="Lng">
                                     </div>
                                     <label class="block text-[11px] font-black text-[#1A1A1A] uppercase mb-2 tracking-widest">Detail Alamat Lengkap *</label>
                                     <textarea id="address_detail" name="address_detail" rows="3" class="w-full border-2 @error('address_detail') border-red-500 @else border-gray-300 @enderror rounded-xl p-3 text-sm font-bold focus:ring-0 focus:border-[#D92323]" placeholder="Geser peta untuk isi alamat otomatis...">{{ old('address_detail', Auth::user()->address) }}</textarea>
@@ -241,6 +238,7 @@
                         </div>
                     </div>
 
+                    {{-- SISI KANAN: STATS & HISTORY --}}
                     <div class="space-y-6">
                         <div class="bg-[#1A1A1A] rounded-2xl p-6 shadow-[5px_5px_0px_#D92323] border-2 border-[#1A1A1A]">
                             <h4 class="font-black text-[#FFD700] mb-4 text-[11px] uppercase tracking-widest border-b border-gray-700 pb-2">Statistik Akun</h4>
@@ -251,108 +249,59 @@
                             </div>
                         </div>
 
-                        <div class="bg-white rounded-2xl p-5 border-2 border-gray-200 h-[400px] flex flex-col">
-                            <h4 class="font-black text-[#1A1A1A] mb-4 text-[11px] uppercase border-b-2 pb-2 tracking-widest">Riwayat Servis</h4>
-                            <div class="overflow-y-auto flex-1 space-y-3 pr-1 custom-scrollbar">
-
-                            @forelse($myOrders as $order)
-                            <div class="p-4 border-2 rounded-2xl mb-4 shadow-sm 
-                                @if($order->payment_status == 'paid' && $order->payment_step == 'full' && $order->status == 'completed') bg-blue-50 border-blue-200 
-                                @elseif($order->status == 'cancelled') bg-red-50 border-red-100 opacity-80 
-                                @else bg-white border-gray-200 @endif">
-                                
-                                <div class="flex justify-between items-center mb-3">
-                                    <span class="text-[8px] font-black uppercase px-2 py-1 rounded bg-gray-100">
-                                        {{ $order->status }}
-                                    </span>
-                                    <span class="text-[8px] font-black uppercase px-2 py-1 rounded 
-                                        @if($order->payment_status == 'paid' && $order->payment_step == 'full' && $order->status == 'completed') bg-blue-600 text-white 
-                                        @elseif($order->status == 'completed' && $order->payment_status == 'unpaid') bg-orange-500 text-white
-                                        @elseif($order->payment_status == 'paid') bg-yellow-500 text-white
-                                        @else bg-red-100 text-red-700 @endif">
+                        <div class="bg-white rounded-2xl p-5 border-2 border-gray-200 h-[500px] flex flex-col shadow-sm">
+                            <h4 class="font-black text-[#1A1A1A] mb-4 text-[11px] uppercase border-b-2 pb-2 tracking-widest italic">Riwayat Servis</h4>
+                            <div class="overflow-y-auto flex-1 space-y-4 pr-1 custom-scrollbar">
+                                @forelse($myOrders as $order)
+                                    <div class="p-4 border-2 rounded-2xl shadow-sm @if($order->status == 'cancelled') bg-red-50 border-red-100 opacity-70 @else bg-white border-gray-200 @endif">
+                                        <div class="flex justify-between items-center mb-2">
+                                            <span class="text-[8px] font-black uppercase px-2 py-1 rounded bg-gray-100">{{ $order->status }}</span>
+                                            <span class="text-[8px] font-black uppercase px-2 py-1 rounded 
+                                                @if($order->payment_status == 'paid' && $order->payment_step == 'full') bg-blue-600 text-white 
+                                                @elseif($order->payment_status == 'paid') bg-yellow-500 text-white
+                                                @else bg-red-500 text-white @endif">
+                                                {{ $order->payment_status == 'paid' ? ($order->payment_step == 'full' ? 'LUNAS ✅' : 'DP OK 💳') : 'BELUM BAYAR ❌' }}
+                                            </span>
+                                        </div>
+                                        <h5 class="font-black text-gray-800 text-xs mb-3 uppercase leading-tight">Order #{{ $order->id }} - {{ $order->services->pluck('name')->implode(', ') }}</h5>
                                         
-                                        @if($order->payment_status == 'paid' && $order->payment_step == 'full' && $order->status == 'completed') 
-                                            LUNAS TOTAL ✅
-                                        @elseif($order->status == 'completed' && $order->payment_status == 'unpaid')
-                                            PELUNASAN 💳
-                                        @elseif($order->payment_status == 'paid') 
-                                            DP LUNAS (50%) 💳
-                                        @else 
-                                            BELUM BAYAR ❌ 
+                                        @if($order->status !== 'cancelled')
+                                            @if($order->payment_status == 'unpaid' && $order->snap_token)
+                                                <button onclick="bayarPesanan('{{ $order->snap_token }}')" class="w-full bg-[#1A1A1A] text-[#FFD700] text-[10px] font-black py-3 rounded-xl border-2 border-[#1A1A1A] uppercase shadow-[3px_3px_0px_#FFD700] mb-2">
+                                                    💳 BAYAR SEKARANG
+                                                </button>
+                                            @elseif($order->status == 'completed' && $order->payment_step == 'dp' && $order->snap_token)
+                                                <button onclick="bayarPesanan('{{ $order->snap_token }}')" class="w-full bg-orange-500 text-white text-[10px] font-black py-3 rounded-xl uppercase shadow-md mb-2">
+                                                    💳 PELUNASAN SISA 50%
+                                                </button>
+                                            @endif
+                                            
+                                            @if($order->status == 'pending' && $order->payment_status == 'unpaid')
+                                            <form action="{{ route('orders.cancel', $order->id) }}" method="POST" onsubmit="return confirm('Yakin batal?')">
+                                                @csrf
+                                                <button type="submit" class="w-full text-red-600 text-[9px] font-black py-1 uppercase underline italic">Batalkan Pesanan</button>
+                                            </form>
+                                            @endif
+                                        @else
+                                            <p class="text-[9px] text-red-400 italic">"{{ $order->cancel_notes ?? 'Dibatalkan' }}"</p>
                                         @endif
-                                    </span>
-                                </div>
-
-                                <h5 class="font-black text-gray-800 text-xs mb-3 uppercase leading-tight">Order #{{ $order->id }} - {{ $order->services->pluck('name')->implode(', ') }}</h5>
-
-                                <div class="mt-4">
-                                    {{-- 1. JIKA STATUS DIBATALKAN --}}
-                                    @if($order->status == 'cancelled')
-                                        <div class="p-2 bg-white border-2 border-dashed border-red-300 rounded-xl">
-                                            <p class="text-[9px] font-black text-red-600 uppercase mb-1">🚫 PEMBATALAN:</p>
-                                            <p class="text-[10px] text-gray-700 font-bold italic leading-tight">
-                                                "{{ $order->cancel_notes ?? 'Dibatalkan oleh sistem.' }}"
-                                            </p>
-                                        </div>
-
-                                        @if(!$order->snap_token && $order->payment_status == 'unpaid')
-                                            <p class="text-[9px] text-red-500 font-bold mt-2">
-                                                ⚠️ Token Pembayaran belum siap. Silakan lapor admin.
-                                            </p>
-                                        @endif
-
-                                    {{-- 2. JIKA SUDAH SELESAI KERJA TAPI BELUM PELUNASAN --}}
-                                    @elseif($order->status == 'completed' && $order->payment_status == 'unpaid')
-                                        <div class="space-y-3">
-                                            <div class="p-3 bg-orange-50 border-2 border-dashed border-orange-300 rounded-2xl text-center">
-                                                <p class="text-[10px] font-black text-orange-600 uppercase animate-pulse">🛠️ Pekerjaan Telah Selesai!</p>
-                                                <p class="text-[9px] text-gray-500 font-bold uppercase tracking-tight">Silakan selesaikan PELUNASAN (Sisa 50%)</p>
-                                            </div>
-                                            <button onclick="bayarPesanan('{{ $order->snap_token }}')" class="w-full bg-[#1A1A1A] text-[#FFD700] text-xs font-black py-4 rounded-2xl shadow-[4px_4px_0px_#FFD700] border-2 border-[#1A1A1A] uppercase tracking-widest transition-all">
-                                                💳 BAYAR PELUNASAN SEKARANG
-                                            </button>
-                                        </div>
-
-                                    {{-- 3. JIKA SUDAH LUNAS TOTAL --}}
-                                    @elseif($order->status == 'completed' && $order->payment_status == 'paid' && $order->payment_step == 'full')
-                                        <div class="p-4 bg-blue-50 border-2 border-blue-200 rounded-2xl text-center">
-                                            <p class="text-[9px] text-blue-700 font-black uppercase italic">✅ Terima Kasih! Pesanan Selesai & Lunas Total.</p>
-                                        </div>
-
-                                    {{-- 4. BELUM BAYAR DP --}}
-                                    @elseif($order->payment_status == 'unpaid' && $order->payment_step == 'dp')
-                                        @if($order->snap_token)
-                                            <button onclick="bayarPesanan('{{ $order->snap_token }}')" class="w-full bg-[#FFD700] text-[#1A1A1A] text-xs font-black py-3 rounded-xl border-2 border-[#1A1A1A] uppercase shadow-[4px_4px_0px_#1A1A1A] animate-bounce">
-                                                💳 BAYAR DP 50% SEKARANG
-                                            </button>
-                                        @endif
-                                        <form action="{{ route('orders.cancel', $order->id) }}" method="POST" class="mt-2" onsubmit="return confirm('Yakin ingin membatalkan?')">
-                                            @csrf
-                                            <button type="submit" class="w-full bg-white text-red-600 text-[9px] font-black py-2 rounded-lg border-2 border-red-600 uppercase">❌ Batalkan Pesanan</button>
-                                        </form>
-
-                                    {{-- 5. SUDAH DP, MENUNGGU KONFIRMASI/TEKNISI --}}
-                                    @elseif($order->payment_status == 'paid' && $order->status == 'pending')
-                                        <div class="p-3 bg-yellow-50 border-2 border-dashed border-yellow-300 rounded-xl text-center">
-                                            <p class="text-[9px] text-yellow-700 font-black uppercase animate-pulse">⏳ DP Sukses! Menunggu Admin...</p>
-                                        </div>
-                                    @elseif($order->payment_status == 'paid' && ($order->status == 'confirmed' || $order->status == 'process'))
-                                        <div class="p-3 bg-green-50 border-2 border-green-200 rounded-xl text-center">
-                                            <p class="text-[9px] text-green-700 font-black uppercase italic">🛠️ Teknisi Menuju Lokasi Anda.</p>
-                                        </div>
-                                    @endif
-                                </div>
-                            </div>
-                            @empty
-                                <p class="text-xs font-bold text-center mt-10 text-gray-400 italic">Belum ada pesanan</p>
-                            @endforelse
-
+                                    </div>
+                                @empty
+                                    <p class="text-xs font-bold text-center mt-10 text-gray-400 italic uppercase">Belum ada pesanan</p>
+                                @endforelse
                             </div>
                         </div>
                     </div>
                 </div>
 
+                {{-- SCRIPTS --}}
                 <script>
+                    function toggleQty(checkbox, id) {
+                        const qtyInput = document.getElementById('qty_' + id);
+                        qtyInput.disabled = !checkbox.checked;
+                        if(!checkbox.checked) qtyInput.value = 1;
+                    }
+
                     var defaultLat = -7.818838, defaultLng = 112.012563;
                     var addressInput = document.getElementById('address_detail');
                     var map = L.map('map', { center: [defaultLat, defaultLng], zoom: 15, zoomControl: false });
@@ -374,6 +323,7 @@
                     }
 
                     map.on('moveend', function () { fetchAddress(map.getCenter().lat, map.getCenter().lng); });
+                    
                     if(!document.getElementById('latitude').value) {
                         document.getElementById('latitude').value = defaultLat;
                         document.getElementById('longitude').value = defaultLng;
@@ -381,7 +331,9 @@
 
                     function getLocation() {
                         if (navigator.geolocation) {
-                            navigator.geolocation.getCurrentPosition(pos => map.flyTo([pos.coords.latitude, pos.coords.longitude], 17));
+                            navigator.geolocation.getCurrentPosition(pos => {
+                                map.flyTo([pos.coords.latitude, pos.coords.longitude], 17);
+                            });
                         }
                     }
 
@@ -389,7 +341,7 @@
                         window.snap.pay(token, {
                             onSuccess: function() { window.location.href = "/dashboard"; },
                             onPending: function() { window.location.reload(); },
-                            onError: function() { alert("Pembayaran Gagal!"); window.location.reload(); }
+                            onError: function() { alert("Pembayaran Gagal!"); }
                         });
                     }
                 </script>

@@ -41,14 +41,39 @@ class OrderController extends Controller
         ]);
 
         // --- LOGIKA MESIN WAKTU ---
-        $bookingDate = Carbon::parse($request->booking_date);
-        
+        $bookingDate = \Carbon\Carbon::parse($request->booking_date);
+        $bookingTime = $request->booking_time; // format jam (HH:mm)
+        $currentTime = \Carbon\Carbon::now('Asia/Jakarta');
+        $minTimeForToday = \Carbon\Carbon::now('Asia/Jakarta')->addHours(6);
+
+        // 1. Cek Hari Minggu (Tutup)
+        if ($bookingDate->isSunday()) {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'booking_date' => 'Mohon maaf, kami tutup pada hari Minggu. Silakan pilih jadwal Senin - Sabtu.'
+            ]);
+        }
+
+        // 2. Cek Jam Operasional (08:00 - 17:00)
+        if ($bookingTime < '08:00' || $bookingTime > '17:00') {
+            throw \Illuminate\Validation\ValidationException::withMessages([
+                'booking_time' => 'Jam operasional kami adalah pukul 08:00 - 17:00 WIB.'
+            ]);
+        }
+
+        // 3. Cek Jeda 6 Jam (Jika pesan untuk hari ini)
         if ($bookingDate->isToday()) {
-            $bookingDateTime = Carbon::parse($request->booking_date . ' ' . $request->booking_time, 'Asia/Jakarta');
+            $bookingDateTime = \Carbon\Carbon::parse($request->booking_date . ' ' . $request->booking_time, 'Asia/Jakarta');
             
-            if ($bookingDateTime->isPast()) {
+            if ($bookingDateTime->lt($minTimeForToday)) {
+                // Jika batas 6 jam sudah melewati jam operasional (17:00)
+                if ($minTimeForToday->format('H:i') > '17:00') {
+                    throw \Illuminate\Validation\ValidationException::withMessages([
+                        'booking_date' => 'Jadwal untuk hari ini sudah penuh/melewati batas jeda 6 jam operasional. Silakan pilih jadwal besok.'
+                    ]);
+                }
+
                 throw \Illuminate\Validation\ValidationException::withMessages([
-                    'booking_time' => 'Waktu pesanan untuk hari ini tidak boleh kurang dari jam saat ini.'
+                    'booking_time' => 'Minimal pemesanan adalah 6 jam dari sekarang. Paling cepat pukul ' . $minTimeForToday->format('H:i') . ' WIB.'
                 ]);
             }
         }
