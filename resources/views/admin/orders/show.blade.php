@@ -114,24 +114,43 @@
                                 @if($order->payment_status === 'paid')
                                     <h3 class="font-black text-xl uppercase mb-6 text-center italic underline decoration-[#D92323] decoration-4 underline-offset-4">Plotting Teknisi</h3>
                                     
-                                    {{-- ROUTE PENUGASAN GRUP --}}
+                                    {{-- ROUTE PENUGASAN GRUP DENGAN TAMPILAN BARU --}}
                                     <form action="{{ route('admin.orders.assign', $order->id) }}" method="POST">
                                         @csrf
                                         @method('PUT')
                                         <div class="space-y-4">
-                                            <label class="block text-[10px] font-black uppercase text-gray-500 italic tracking-widest">Pilih Teknisi (Bisa lebih dari 1):</label>
+                                            <p class="text-[10px] font-black uppercase text-gray-500 italic tracking-widest">Pilih Teknisi (Bisa lebih dari 1):</p>
                                             
-                                            <select name="technician_ids[]" class="w-full border-2 border-gray-300 rounded-xl p-3 focus:border-[#D92323] focus:ring-0 custom-scrollbar" multiple required style="min-height: 120px;">
+                                            {{-- LIST TEKNISI CUSTOM CHECKBOX --}}
+                                            <div class="border-2 border-gray-300 rounded-xl p-3 h-64 overflow-y-auto custom-scrollbar space-y-3 bg-gray-50">
                                                 @foreach($technicians as $tech)
                                                     @php
-                                                        // Cek apakah teknisi sibuk di tanggal ini
                                                         $isBusy = $tech->schedules->count() > 0;
                                                     @endphp
-                                                    <option value="{{ $tech->id }}" {{ $isBusy ? 'disabled' : '' }} class="font-bold {{ $isBusy ? 'text-red-500 bg-red-50' : 'text-green-600' }}">
-                                                        {{ $tech->name }} - {{ $isBusy ? '🔴 BUSY (Ada Jadwal)' : '🟢 READY' }}
-                                                    </option>
+                                                    
+                                                    <label class="relative flex items-center p-3 border-2 rounded-xl cursor-pointer transition-all 
+                                                        {{ $isBusy ? 'bg-red-50 border-red-200 opacity-60 cursor-not-allowed' : 'bg-white border-gray-200 hover:border-[#22C55E] has-[:checked]:border-[#22C55E] has-[:checked]:bg-[#DCFCE7] shadow-sm' }}">
+                                                        
+                                                        <input type="checkbox" name="technician_ids[]" value="{{ $tech->id }}" 
+                                                            class="w-5 h-5 text-[#22C55E] border-2 border-gray-300 rounded focus:ring-0 mr-4 transition-all" 
+                                                            {{ $isBusy ? 'disabled' : '' }}>
+                                                        
+                                                        <div class="flex-1">
+                                                            <p class="font-black text-sm uppercase {{ $isBusy ? 'text-red-800' : 'text-[#1A1A1A]' }}">{{ $tech->name }}</p>
+                                                            <div class="flex items-center mt-1">
+                                                                @if($isBusy)
+                                                                    <span class="w-2 h-2 rounded-full bg-red-500 mr-1 animate-pulse"></span>
+                                                                    <p class="text-[9px] font-bold text-red-600 uppercase tracking-widest">BUSY (Ada Jadwal)</p>
+                                                                @else
+                                                                    <span class="w-2 h-2 rounded-full bg-green-500 mr-1"></span>
+                                                                    <p class="text-[9px] font-bold text-green-600 uppercase tracking-widest">READY</p>
+                                                                @endif
+                                                            </div>
+                                                        </div>
+                                                    </label>
                                                 @endforeach
-                                            </select>
+                                            </div>
+                                            
                                             <p class="text-[9px] text-gray-500 italic mt-2">* Teknisi yang ditandai 🔴 BUSY tidak bisa dipilih karena sudah ada jadwal di tanggal {{ \Carbon\Carbon::parse($order->booking_date)->format('d M Y') }}.</p>
 
                                             <button type="submit" class="w-full bg-[#1A1A1A] text-white font-black py-4 rounded-xl shadow-[4px_4px_0px_#D92323] hover:shadow-none hover:translate-x-1 hover:translate-y-1 transition-all uppercase tracking-widest text-[10px]">
@@ -188,7 +207,6 @@
                     @endif
                 </div>
 
-            {{-- 3 PENUTUP DIV YANG HILANG (INI SOLUSINYA) --}}
             </div>
         </div>
     </div>
