@@ -98,8 +98,7 @@
                                 @endphp
                                 <tr class="text-[9px] {{ $order->status == 'cancelled' ? 'bg-red-50 text-gray-400' : '' }}">
                                     <td class="p-2 text-center font-bold border-r border-gray-100">{{ $index + 1 }}</td>
-                                    <td class="p-2 font-bold border-r border-gray-100 uppercase">{{ $order->created_at->format('d/m/y') }}</td>
-                                    <td class="p-2 font-black border-r border-gray-100 uppercase">{{ $order->user->name }}</td>
+                                    <td class="p-2 font-bold border-r border-gray-100 uppercase">{{ \Carbon\Carbon::parse($order->booking_date)->format('d/m/y') }}</td>                                    <td class="p-2 font-black border-r border-gray-100 uppercase">{{ $order->user->name }}</td>
                                     <td class="p-2 border-r border-gray-100 leading-tight">
                                         {{ $order->services->pluck('name')->implode(', ') }}
                                     </td>

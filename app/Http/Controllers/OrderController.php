@@ -311,13 +311,16 @@ class OrderController extends Controller
         $allServices = Service::all();
         $query = Order::with(['user', 'services', 'technicians']);
 
+        // Filter Tanggal Mulai & Selesai (berdasarkan Tanggal Pengerjaan / booking_date)
         if ($request->start_date) {
-            $query->whereDate('created_at', '>=', $request->start_date);
+            $query->whereDate('booking_date', '>=', $request->start_date);
         }
+        
         if ($request->end_date) {
-            $query->whereDate('created_at', '<=', $request->end_date);
+            $query->whereDate('booking_date', '<=', $request->end_date);
         }
 
+        // Filter berdasarkan jenis layanan
         if ($request->service_id) {
             $query->whereHas('services', function($q) use ($request) {
                 $q->where('services.id', $request->service_id);
@@ -327,16 +330,19 @@ class OrderController extends Controller
         $orders = $query->latest()->get();
 
         // --- REVISI PERHITUNGAN OMSET LAPORAN (AKURAT) ---
+        // 1. Hitung total DP dari pesanan yang baru masuk DP-nya
         $dpSum = $orders->where('payment_status', 'paid')
                         ->where('payment_step', 'dp')
                         ->where('status', '!=', 'cancelled')
                         ->sum('dp_amount');
                         
+        // 2. Hitung total harga FULL dari pesanan yang sudah lunas
         $fullSum = $orders->where('payment_status', 'paid')
-                         ->where('payment_step', 'full')
-                         ->where('status', '!=', 'cancelled')
-                         ->sum('total_price');
+                          ->where('payment_step', 'full')
+                          ->where('status', '!=', 'cancelled')
+                          ->sum('total_price');
 
+        // 3. Gabungkan Omset
         $totalPendapatan = $dpSum + $fullSum;
 
         return view('admin.laporan.index', compact('orders', 'totalPendapatan', 'allServices'));
