@@ -29,59 +29,85 @@
                 </form>
             </div>
 
-            {{-- TABEL DATA TUGAS --}}
+            {{-- TABEL DATA TUGAS DENGAN DETAIL LANGSUNG --}}
             <div class="bg-white rounded-xl shadow-md overflow-hidden border-2 border-[#1A1A1A]">
                 <div class="overflow-x-auto">
                     <table class="w-full text-left">
                         <thead>
                             <tr class="bg-[#1A1A1A] text-white text-[11px] font-black uppercase tracking-widest">
-                                <th class="px-6 py-4">ID & Tgl</th>
-                                <th class="px-6 py-4">Pelanggan</th>
-                                <th class="px-6 py-4">Layanan</th>
-                                <th class="px-6 py-4 text-center">Status</th>
-                                <th class="px-6 py-4 text-center">Aksi</th>
+                                <th class="px-4 py-4 w-1/6">ID & Jadwal</th>
+                                <th class="px-4 py-4 w-1/3">Pelanggan & Lokasi</th>
+                                <th class="px-4 py-4 w-1/4">Layanan & Catatan</th>
+                                <th class="px-4 py-4 text-center">Status</th>
+                                <th class="px-4 py-4 text-center">Aksi</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-200">
                             @forelse($assignedOrders as $order)
-                            <tr class="text-sm font-bold text-gray-800 hover:bg-gray-50 transition-colors">
-                                <td class="px-6 py-4">
-                                    <div class="font-black text-[#D92323]">#{{ $order->id }}</div>
-                                    <div class="text-[10px] text-gray-500">{{ \Carbon\Carbon::parse($order->booking_date)->format('d M Y') }}</div>
+                            <tr class="text-sm font-bold text-gray-800 hover:bg-gray-50 transition-colors align-top">
+                                
+                                {{-- KOLOM 1: ID & JADWAL --}}
+                                <td class="px-4 py-4">
+                                    <div class="font-black text-[#D92323] text-base">#{{ $order->id }}</div>
+                                    <div class="text-[11px] text-gray-800 mt-1">{{ \Carbon\Carbon::parse($order->booking_date)->format('d M Y') }}</div>
+                                    <div class="text-[10px] text-gray-600 font-black bg-gray-100 inline-block px-2 py-1 rounded border border-gray-200 mt-1.5">
+                                        🕒 {{ $order->booking_time }} WIB
+                                    </div>
                                 </td>
-                                <td class="px-6 py-4">
+
+                                {{-- KOLOM 2: PELANGGAN & LOKASI DETAIL --}}
+                                <td class="px-4 py-4">
                                     <div class="uppercase font-black text-gray-900">{{ $order->user->name }}</div>
-                                    <div class="text-[10px] text-gray-500 font-bold mt-1">{{ $order->user->phone }}</div>
+                                    <div class="text-[10px] text-green-600 font-black mt-1 mb-2">📞 {{ $order->user->phone }}</div>
+                                    <div class="text-[11px] text-gray-600 leading-tight border-l-2 border-[#D92323] pl-2 italic">
+                                        📍 {{ $order->address_detail }}
+                                    </div>
+                                    <div class="mt-2">
+                                        <a href="https://www.google.com/maps?q={{ $order->latitude }},{{ $order->longitude }}" target="_blank" class="text-[9px] font-black bg-blue-50 text-blue-600 border border-blue-200 px-2 py-1 rounded hover:bg-blue-600 hover:text-white transition-colors uppercase tracking-widest inline-block">
+                                            Lihat Titik Peta 🗺️
+                                        </a>
+                                    </div>
                                 </td>
-                                <td class="px-6 py-4">
-                                    <div class="flex flex-wrap gap-1">
+
+                                {{-- KOLOM 3: LAYANAN & CATATAN --}}
+                                <td class="px-4 py-4">
+                                    <div class="flex flex-wrap gap-1 mb-2">
                                         @foreach($order->services as $svc)
                                             <span class="bg-blue-50 text-blue-700 px-2 py-1 rounded text-[9px] border border-blue-200 uppercase font-black">
-                                                {{ $svc->name }}
+                                                {{ $svc->name }} ({{ $svc->pivot->quantity }}x)
                                             </span>
                                         @endforeach
                                     </div>
+                                    @if($order->notes)
+                                        <div class="text-[10px] bg-yellow-50 border border-yellow-200 text-yellow-800 p-2 rounded leading-tight">
+                                            <span class="font-black uppercase tracking-widest text-[9px]">Catatan Pelanggan:</span><br>
+                                            {{ $order->notes }}
+                                        </div>
+                                    @else
+                                        <span class="text-[9px] text-gray-400 italic">-- Tidak ada catatan --</span>
+                                    @endif
                                 </td>
-                                <td class="px-6 py-4 text-center uppercase text-[10px] font-black tracking-widest">
-                                    <span class="px-3 py-1 rounded-full {{ $order->status == 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">
+
+                                {{-- KOLOM 4: STATUS --}}
+                                <td class="px-4 py-4 text-center uppercase text-[10px] font-black tracking-widest align-middle">
+                                    <span class="inline-block px-3 py-1 rounded-full {{ $order->status == 'completed' ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700' }}">
                                         {{ $order->status }}
                                     </span>
                                 </td>
-                                <td class="px-6 py-4 text-center">
-                                    <div class="flex justify-center items-center gap-2">
-                                        {{-- TOMBOL DETAIL --}}
-                                        <a href="{{ route('technician.orders.finish', $order->id) }}" class="bg-white text-[#1A1A1A] border-2 border-[#1A1A1A] text-[9px] font-black px-3 py-2 rounded-lg shadow-[2px_2px_0px_#1A1A1A] uppercase hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all">
-                                            Detail
-                                        </a>
 
-                                        {{-- TOMBOL SELESAIKAN (Hanya Muncul Jika Belum Selesai) --}}
+                                {{-- KOLOM 5: AKSI (Hanya Selesaikan) --}}
+                                <td class="px-4 py-4 text-center align-middle">
+                                    <div class="flex justify-center items-center">
                                         @if($order->status !== 'completed')
-                                            <a href="{{ route('technician.orders.finish', $order->id) }}" class="bg-[#D92323] text-white border-2 border-[#D92323] text-[9px] font-black px-3 py-2 rounded-lg shadow-[2px_2px_0px_#1A1A1A] uppercase tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all">
+                                            <a href="{{ route('technician.orders.finish', $order->id) }}" class="inline-block bg-[#D92323] text-white border-2 border-[#D92323] text-[10px] font-black px-4 py-2.5 rounded-lg shadow-[2px_2px_0px_#1A1A1A] uppercase tracking-widest hover:translate-x-0.5 hover:translate-y-0.5 hover:shadow-none transition-all">
                                                 Selesaikan
                                             </a>
+                                        @else
+                                            <span class="inline-block text-green-600 font-black text-[10px] uppercase bg-green-50 px-3 py-2 rounded-lg border border-green-200">Selesai ✅</span>
                                         @endif
                                     </div>
                                 </td>
+                                
                             </tr>
                             @empty
                             <tr>
