@@ -144,11 +144,16 @@ class OrderController extends Controller
     public function show($id)
     {
         $order = Order::with(['user', 'services', 'technicians'])->findOrFail($id);
-        $technicians = User::where('role', 'technician')->get();
+        
+        // Ambil teknisi, sekalian intip apakah mereka punya jadwal di "Tanggal Order" ini
+        $technicians = User::where('role', 'technician')
+            ->with(['schedules' => function ($query) use ($order) {
+                // Hanya ambil jadwal yang tanggalnya SAMA dengan tanggal pesanan ini
+                $query->whereDate('work_date', $order->booking_date);
+            }])->get();
         
         return view('admin.orders.show', compact('order', 'technicians'));
     }
-
     /**
      * Admin menugaskan teknisi 
      */

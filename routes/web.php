@@ -9,7 +9,7 @@ use App\Http\Controllers\GalleryController;
 use App\Http\Controllers\PaymentCallbackController;
 use App\Http\Controllers\TechnicianController;
 use App\Http\Controllers\ServiceController;
-
+use Illuminate\Support\Facades\Artisan;
 
 // --- 1. PUBLIC & GUEST ACCESS ---
 Route::get('/', [HomeController::class, 'index'])->name('home');
@@ -66,9 +66,13 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
     Route::delete('/galleries/{id}', [GalleryController::class, 'destroy'])->name('galleries.destroy');
 
     // --- KELOLA LAPORAN ---
-    Route::get('laporan', [OrderController::class, 'laporan'])->name('laporan.index');   
+    Route::get('laporan', [OrderController::class, 'laporan'])->name('laporan.index'); 
  });
 
+Route::get('/run-scheduler-widi-secret-123', function () {
+    Artisan::call('schedule:run');
+    return "Scheduler executed!";
+});
 
 
 // --- 4. SYSTEM TOOLS ---
