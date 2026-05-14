@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Carbon\Carbon; // <-- TAMBAHKAN INI
+use App\Models\Schedule; // <-- TAMBAHKAN BARIS INI
 use Illuminate\Validation\ValidationException; // <-- TAMBAHKAN JUGA INI AGAR PESAN ERRORNYA MUNCUL
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
