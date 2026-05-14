@@ -74,7 +74,22 @@
                 </div>
             </div>
 
-            {{-- ESTIMASI OMZET (BULANAN & TOTAL) --}}
+{{-- ESTIMASI OMZET (BULANAN & TOTAL) --}}
+            @php
+                // Hitung khusus pesanan BULAN INI yang sudah dibayar (tanpa hitung yang batal)
+                $paidThisMonth = $orders->where('payment_status', 'paid')
+                                        ->where('status', '!=', 'cancelled')
+                                        ->filter(fn($order) => \Carbon\Carbon::parse($order->created_at)->isCurrentMonth());
+                
+                $omsetBulanIni = $paidThisMonth->where('payment_step', 'dp')->sum('dp_amount') + 
+                                 $paidThisMonth->where('payment_step', 'full')->sum('total_price');
+
+                // Hitung total KESELURUHAN
+                $omsetTotalDP = $orders->where('payment_status', 'paid')->where('payment_step', 'dp')->where('status', '!=', 'cancelled')->sum('dp_amount');
+                $omsetTotalFull = $orders->where('payment_status', 'paid')->where('payment_step', 'full')->where('status', '!=', 'cancelled')->sum('total_price');
+                $omsetKeseluruhan = $omsetTotalDP + $omsetTotalFull;
+            @endphp
+
             <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-10">
                 {{-- Omzet Bulan Ini (Reset Tiap Bulan) --}}
                 <div class="bg-white p-8 rounded-2xl border-2 border-[#1A1A1A] shadow-[6px_6px_0px_#D92323] relative overflow-hidden group hover:border-[#D92323] transition-all">
@@ -83,7 +98,7 @@
                         <span class="px-3 py-1 bg-red-100 text-[#D92323] text-[10px] font-black rounded uppercase tracking-wider">{{ now()->translatedFormat('F Y') }}</span>
                     </div>
                     <h3 class="text-4xl font-black text-[#1A1A1A] mt-2 tracking-tight">
-                        Rp {{ number_format($orders->where('payment_status', 'paid')->filter(fn($order) => \Carbon\Carbon::parse($order->created_at)->isCurrentMonth())->sum('total_price'), 0, ',', '.') }}
+                        Rp {{ number_format($omsetBulanIni, 0, ',', '.') }}
                     </h3>
                 </div>
 
@@ -91,7 +106,7 @@
                 <div class="bg-[#1A1A1A] p-8 rounded-2xl border-2 border-[#1A1A1A] shadow-[6px_6px_0px_#FFD700]">
                     <p class="text-xs font-black text-[#FFD700] uppercase tracking-[0.2em]">Total Omzet Keseluruhan</p>
                     <h3 class="text-4xl font-black text-white mt-2 tracking-tight">
-                        Rp {{ number_format($orders->where('payment_status', 'paid')->sum('total_price'), 0, ',', '.') }}
+                        Rp {{ number_format($omsetKeseluruhan, 0, ',', '.') }}
                     </h3>
                 </div>
             </div>

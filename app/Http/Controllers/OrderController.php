@@ -308,13 +308,9 @@ class OrderController extends Controller
      */
     public function laporan(Request $request)
     {
-        // 1. Ambil semua daftar layanan untuk isi dropdown di filter
         $allServices = Service::all();
-
-        // 2. Mulai query Order
         $query = Order::with(['user', 'services', 'technicians']);
 
-        // Filter Tanggal Mulai & Selesai (Tetap dipertahankan karena penting)
         if ($request->start_date) {
             $query->whereDate('created_at', '>=', $request->start_date);
         }
@@ -322,7 +318,6 @@ class OrderController extends Controller
             $query->whereDate('created_at', '<=', $request->end_date);
         }
 
-        // --- LOGIKA FILTER LAYANAN (TERBARU) ---
         if ($request->service_id) {
             $query->whereHas('services', function($q) use ($request) {
                 $q->where('services.id', $request->service_id);
@@ -331,12 +326,19 @@ class OrderController extends Controller
 
         $orders = $query->latest()->get();
 
-        // Hitung total pendapatan dari hasil filter
-        $totalPendapatan = $orders->where('payment_status', 'paid')
-                                ->where('status', '!=', 'cancelled')
-                                ->sum('total_price');
+        // --- REVISI PERHITUNGAN OMSET LAPORAN (AKURAT) ---
+        $dpSum = $orders->where('payment_status', 'paid')
+                        ->where('payment_step', 'dp')
+                        ->where('status', '!=', 'cancelled')
+                        ->sum('dp_amount');
+                        
+        $fullSum = $orders->where('payment_status', 'paid')
+                         ->where('payment_step', 'full')
+                         ->where('status', '!=', 'cancelled')
+                         ->sum('total_price');
 
-        // Kirim $allServices ke view
+        $totalPendapatan = $dpSum + $fullSum;
+
         return view('admin.laporan.index', compact('orders', 'totalPendapatan', 'allServices'));
     }
 

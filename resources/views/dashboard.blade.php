@@ -48,8 +48,17 @@
         <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
 
             @if(Auth::user()->role === 'admin')
-                {{-- KODE VIEW ADMIN (Tetap Sama) --}}
-                @php $pendingGallery = \App\Models\Gallery::where('status', 'pending')->count(); @endphp
+                
+                @php 
+                    // 1. Hitung jumlah alert verifikasi foto
+                    $pendingGallery = \App\Models\Gallery::where('status', 'pending')->count(); 
+
+                    // 2. HITUNG OMSET REAL DARI MIDTRANS
+                    $omsetDP = \App\Models\Order::where('payment_status', 'paid')->where('payment_step', 'dp')->sum('dp_amount');
+                    $omsetFull = \App\Models\Order::where('payment_status', 'paid')->where('payment_step', 'full')->sum('total_price');
+                    $totalOmset = $omsetDP + $omsetFull;
+                @endphp
+
                 @if($pendingGallery > 0)
                 <div class="mb-8 bg-[#FFD700]/20 border-l-4 border-[#FFD700] rounded-r-xl p-6 shadow-sm flex flex-col md:flex-row items-center justify-between gap-4">
                     <div class="flex items-center gap-4">
@@ -64,6 +73,20 @@
                     <a href="{{ route('admin.galleries.index') }}" class="w-full md:w-auto text-center text-sm bg-[#1A1A1A] text-[#FFD700] font-black px-6 py-3 rounded-lg shadow-[3px_3px_0px_#D92323]">CEK SEKARANG</a>
                 </div>
                 @endif
+
+                {{-- KOTAK OMSET SUPER KEKINIAN --}}
+                <div class="mb-6 bg-gradient-to-r from-[#1A1A1A] to-gray-800 rounded-2xl p-8 shadow-[6px_6px_0px_#D92323] border-2 border-[#1A1A1A] flex justify-between items-center text-white">
+                    <div>
+                        <p class="text-[11px] font-black uppercase tracking-widest text-[#FFD700] mb-2 flex items-center">
+                            <span class="animate-pulse w-2 h-2 rounded-full bg-[#FFD700] mr-2"></span> Real Time Revenue
+                        </p>
+                        <h3 class="text-4xl md:text-5xl font-black tracking-tighter">Rp {{ number_format($totalOmset, 0, ',', '.') }}</h3>
+                        <p class="text-[9px] text-gray-400 mt-2 italic">*Hanya menghitung dana yang berhasil diverifikasi oleh sistem Midtrans.</p>
+                    </div>
+                    <div class="hidden md:flex bg-white/10 p-4 rounded-2xl backdrop-blur-sm border border-white/20">
+                        <span class="text-5xl">💰</span>
+                    </div>
+                </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
                     <div class="bg-white p-6 rounded-2xl shadow-sm border border-gray-100">
