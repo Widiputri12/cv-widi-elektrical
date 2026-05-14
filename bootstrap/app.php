@@ -21,7 +21,12 @@ return Application::configure(basePath: dirname(__DIR__))
             'api/payment/callback', 
             'payment/callback',
         ]);
+
+        $middleware->validateCsrfTokens(except: [
+        '/midtrans/callback', // <-- Tambahkan baris ini
+        ]);
         
     })
+    
     ->withExceptions(function (Exceptions $exceptions) {
     })->create(); 

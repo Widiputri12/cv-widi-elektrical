@@ -339,6 +339,53 @@ class OrderController extends Controller
         return view('admin.laporan.index', compact('orders', 'totalPendapatan', 'allServices'));
     }
 
+/**
+     * Webhook/Callback dari Midtrans untuk Update Status Otomatis
+     */
+    public function midtransCallback(Request $request, FonnteService $fonnte)
+    {
+        // 1. Tangkap Payload dari Midtrans
+        $serverKey = config('services.midtrans.server_key');
+        $hashed = hash("sha512", $request->order_id . $request->status_code . $request->gross_amount . $serverKey);
+        
+        // Verifikasi keamanan (Pastikan ini benar-benar dari Midtrans)
+        if ($hashed == $request->signature_key) {
+            
+            // 2. Pecah ID Transaksi (Contoh: "ORDER-2-1778745783" -> Ambil angka "2")
+            $parts = explode('-', $request->order_id);
+            
+            if (isset($parts[1])) {
+                $realOrderId = $parts[1];
+                $order = Order::with('user')->find($realOrderId);
+
+                if ($order) {
+                    // 3. Cek Status Transaksinya
+                    if ($request->transaction_status == 'capture' || $request->transaction_status == 'settlement') {
+                        // UPDATE DATABASE JADI LUNAS
+                        $order->update(['payment_status' => 'paid']);
+
+                        // Kirim WA Notifikasi Sukses Bayar ke Pelanggan
+                        if ($order->user && !empty($order->user->phone)) {
+                            $jenisBayar = $order->payment_step == 'dp' ? 'DP 50%' : 'PELUNASAN SISA TAGIHAN';
+                            $pesanPelanggan = "🎉 *PEMBAYARAN BERHASIL* 🎉\n\nHalo *{$order->user->name}*,\n\nPembayaran *{$jenisBayar}* untuk Order #{$order->id} telah berhasil kami terima.\n\nTerima kasih, tim CV Widi akan segera memproses pesanan Anda.";
+                            $fonnte->sendMessage($order->user->phone, $pesanPelanggan);
+                        }
+
+                        // Kirim WA ke Admin
+                        $pesanAdmin = "💰 *PEMBAYARAN MASUK!* 💰\n\nOrder #{$order->id} atas nama *{$order->user->name}* telah melakukan pembayaran.\nStatus: PAID.\n\nSilakan cek dashboard untuk plotting teknisi.";
+                        $this->sendToAdmins($fonnte, $pesanAdmin);
+                    } 
+                    elseif ($request->transaction_status == 'cancel' || $request->transaction_status == 'expire' || $request->transaction_status == 'deny') {
+                        // Jika pembayaran gagal/kadaluwarsa
+                        // Kita biarkan status unpaid, atau ubah status order jadi cancelled (opsional)
+                    }
+                }
+            }
+        }
+
+        return response()->json(['status' => 'success']); // Beri tahu Midtrans kalau sistem kita sudah merespon
+    }
+
     // Tambahkan helper function ini di bawah class (agar kode rapi)
     private function sendToAdmins($fonnte, $message) {
         $admins = User::where('role', 'admin')->get();

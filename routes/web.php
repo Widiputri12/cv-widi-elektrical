@@ -50,6 +50,8 @@ Route::middleware(['auth'])->group(function () {
 
     });
 
+Route::post('/midtrans/callback', [OrderController::class, 'midtransCallback']);
+
 // --- 3. ADMIN MANAGEMENT ---
 Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::resource('technicians', TechnicianController::class);
