@@ -99,7 +99,7 @@ class OrderController extends Controller
 
         $order = Order::create([
             'user_id' => $user->id,
-            'quantity' => $totalAllItems, 
+           // 'quantity' => $totalAllItems, 
             'booking_date' => $request->booking_date,
             'booking_time' => $request->booking_time,
             'address_detail' => $request->address_detail,
