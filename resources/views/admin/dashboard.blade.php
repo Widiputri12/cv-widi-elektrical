@@ -74,7 +74,7 @@
                 </div>
             </div>
 
-{{-- ESTIMASI OMZET (BULANAN & TOTAL) --}}
+            {{-- ESTIMASI OMZET (BULANAN & TOTAL) --}}
             @php
                 // Hitung khusus pesanan BULAN INI yang sudah dibayar (tanpa hitung yang batal)
                 $paidThisMonth = $orders->where('payment_status', 'paid')
@@ -151,7 +151,7 @@
             </div>
 
             {{-- KOTAK FILTER PENCARIAN TANGGAL --}}
-            <div class="mb-6 bg-white border-2 border-[#1A1A1A] p-5 rounded-2xl shadow-[4px_4px_0px_#1A1A1A] print:hidden">
+            <div class="mb-6 bg-white border-2 border-[#1A1A1A] p-5 rounded-2xl shadow-[4px_4px_0px_#1A1A1A]">
                 <h3 class="text-[12px] font-black text-[#1A1A1A] uppercase mb-4 tracking-widest border-b-2 border-gray-100 pb-2">🔍 Filter Data Order Masuk</h3>
                 <form action="{{ route('dashboard') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-end">
                     <div class="flex-1 w-full">
@@ -244,12 +244,16 @@
                                 <td colspan="7" class="py-20 text-center text-gray-400 font-black uppercase tracking-[0.2em] text-xs">Belum ada pesanan masuk.</td>
                             </tr>
                             @endforelse
-                            <div class="p-6 bg-white border-t-4 border-[#1A1A1A]">
-                                {{ $orders->links() }}
-                            </div>
                         </tbody>
                     </table>
                 </div>
+                
+                {{-- PERBAIKAN: Pagination dipindah ke luar tbody agar layout tidak rusak --}}
+                @if($orders->hasPages())
+                <div class="p-6 bg-gray-50 border-t-4 border-[#1A1A1A]">
+                    {{ $orders->links() }}
+                </div>
+                @endif
             </div>
 
         </div>
