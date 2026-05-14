@@ -150,6 +150,25 @@
                 </div>
             </div>
 
+            {{-- KOTAK FILTER PENCARIAN TANGGAL --}}
+            <div class="mb-6 bg-white border-2 border-[#1A1A1A] p-5 rounded-2xl shadow-[4px_4px_0px_#1A1A1A] print:hidden">
+                <h3 class="text-[12px] font-black text-[#1A1A1A] uppercase mb-4 tracking-widest border-b-2 border-gray-100 pb-2">🔍 Filter Data Order Masuk</h3>
+                <form action="{{ route('dashboard') }}" method="GET" class="flex flex-col md:flex-row gap-4 items-end">
+                    <div class="flex-1 w-full">
+                        <label class="block text-[10px] font-black uppercase text-gray-500 mb-1 tracking-wider">Dari Tanggal (Pengerjaan)</label>
+                        <input type="date" name="start_date" value="{{ request('start_date') }}" class="w-full border-2 border-gray-200 rounded-xl text-sm font-bold focus:border-[#D92323] focus:ring-0">
+                    </div>
+                    <div class="flex-1 w-full">
+                        <label class="block text-[10px] font-black uppercase text-gray-500 mb-1 tracking-wider">Sampai Tanggal (Pengerjaan)</label>
+                        <input type="date" name="end_date" value="{{ request('end_date') }}" class="w-full border-2 border-gray-200 rounded-xl text-sm font-bold focus:border-[#D92323] focus:ring-0">
+                    </div>
+                    <div class="flex gap-2 w-full md:w-auto">
+                        <button type="submit" class="flex-1 md:flex-none bg-[#1A1A1A] text-white px-6 py-3 rounded-xl text-[10px] font-black uppercase shadow-[3px_3px_0px_#D92323] hover:translate-x-1 hover:translate-y-1 hover:shadow-none transition-all tracking-widest">Filter</button>
+                        <a href="{{ route('dashboard') }}" class="flex-1 md:flex-none bg-gray-100 text-gray-600 border-2 border-gray-200 px-6 py-3 rounded-xl text-[10px] font-black uppercase text-center hover:bg-gray-200 transition-all tracking-widest">Reset</a>
+                    </div>
+                </form>
+            </div>
+
             {{-- HEADER TABEL --}}
             <div class="flex flex-col md:flex-row justify-between items-end mb-6 gap-4">
                 <div>

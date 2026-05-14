@@ -395,6 +395,31 @@ class OrderController extends Controller
         return response()->json(['status' => 'success']); // Beri tahu Midtrans kalau sistem kita sudah merespon
     }
 
+    /**
+     * Menampilkan Histori Pekerjaan Teknisi dengan Filter Tanggal
+     */
+    public function technicianHistory(Request $request)
+    {
+        $user = Auth::user();
+        
+        // Cari order yang pernah dikerjakan oleh teknisi yang sedang login
+        $query = Order::whereHas('technicians', function($q) use ($user) {
+            $q->where('users.id', $user->id);
+        })->with(['user', 'services']);
+
+        // Logika Filter Tanggal Pengerjaan
+        if ($request->start_date && $request->end_date) {
+            $query->whereDate('booking_date', '>=', $request->start_date)
+                  ->whereDate('booking_date', '<=', $request->end_date);
+        }
+
+        // Urutkan berdasarkan tanggal pengerjaan terbaru
+        $histories = $query->latest('booking_date')->get();
+
+        return view('technician.history', compact('histories'));
+    }
+
+
     // Tambahkan helper function ini di bawah class (agar kode rapi)
     private function sendToAdmins($fonnte, $message) {
         $admins = User::where('role', 'admin')->get();

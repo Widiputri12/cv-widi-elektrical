@@ -44,6 +44,7 @@ Route::middleware(['auth'])->group(function () {
     Route::put('/orders/{id}/finish', [OrderController::class, 'updateFinish'])->name('technician.orders.updateFinish');
     Route::post('/orders/{id}/cancel', [OrderController::class, 'cancelByCustomer'])->name('orders.cancel');
     Route::put('/admin/orders/{id}/cancel', [OrderController::class, 'cancelByAdmin'])->name('admin.orders.cancel');
+    Route::get('/technician/history', [OrderController::class, 'technicianHistory'])->name('technician.history');
 
     Route::resource('services', ServiceController::class);
 
