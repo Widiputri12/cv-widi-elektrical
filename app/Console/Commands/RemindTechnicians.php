@@ -18,27 +18,35 @@ class RemindTechnicians extends Command
         $now = Carbon::now('Asia/Jakarta');
         $timezone = 'Asia/Jakarta';
 
+        $countH1 = 0;
         // --- 1. LOGIKA H-1 HARI ---
-        $tomorrow = Carbon::tomorrow($timezone)->toDateString();
-        $ordersH1 = Order::where('booking_date', $tomorrow)
-                        ->where('status', 'confirmed')
-                        ->get();
+        // Hanya eksekusi kirim pesan H-1 pada jam 16:00 (4 Sore) 
+        // untuk mencegah spam jika cron berjalan setiap jam
+        if ($now->format('H') == '16') {
+            $tomorrow = Carbon::tomorrow($timezone)->toDateString();
+            $ordersH1 = Order::where('booking_date', $tomorrow)
+                            ->where('status', 'confirmed')
+                            ->get();
 
-        foreach ($ordersH1 as $order) {
-            foreach ($order->technicians as $tech) {
-                $pesan = "⏰ *REMINDER H-1* ⏰\n\nHalo {$tech->name}, besok Anda ada jadwal servis:\n📍 Lokasi: {$order->address_detail}\n🕒 Jam: {$order->booking_time} WIB\n\nSiapkan peralatan Anda!";
-                $fonnte->sendMessage($tech->phone, $pesan);
+            foreach ($ordersH1 as $order) {
+                foreach ($order->technicians as $tech) {
+                    $pesan = "⏰ *REMINDER H-1* ⏰\n\nHalo {$tech->name}, besok Anda ada jadwal servis:\n📍 Lokasi: {$order->address_detail}\n🕒 Jam: {$order->booking_time} WIB\n\nSiapkan peralatan Anda!";
+                    $fonnte->sendMessage($tech->phone, $pesan);
+                    $countH1++;
+                }
             }
         }
-
+        $countH3 = 0;
         // --- 2. LOGIKA H-3 JAM ---
-        // Mencari order hari ini yang jam pengerjaannya 3 jam lagi
+        // Mencari order hari ini yang jam pengerjaannya antara 2 sampai 3 jam lagi dari sekarang
+        // Ini untuk mencegah spam jika cron dijalankan setiap jam
+        $twoHoursLater = Carbon::now($timezone)->addHours(2)->format('H:i');
         $threeHoursLater = Carbon::now($timezone)->addHours(3)->format('H:i');
         $today = Carbon::today($timezone)->toDateString();
         
         $ordersH3 = Order::where('booking_date', $today)
                         ->where('booking_time', '<=', $threeHoursLater)
-                        ->where('booking_time', '>', Carbon::now($timezone)->format('H:i'))
+                        ->where('booking_time', '>', $twoHoursLater)
                         ->where('status', 'confirmed')
                         ->get();
 
@@ -46,9 +54,10 @@ class RemindTechnicians extends Command
             foreach ($order->technicians as $tech) {
                 $pesan = "⚡ *REMINDER 3 JAM LAGI* ⚡\n\nHalo {$tech->name}, 3 jam lagi Anda harus di lokasi:\n📍 Pelanggan: {$order->user->name}\n🏠 Alamat: {$order->address_detail}\n🕒 Waktu: {$order->booking_time} WIB\n\nSegera meluncur!";
                 $fonnte->sendMessage($tech->phone, $pesan);
+                $countH3++;
             }
         }
 
-        $this->info('Reminders sent successfully!');
+        $this->info("Reminders executed successfully!\nTotal H-1 sent: {$countH1}\nTotal H-3 sent: {$countH3}");
     }
 }

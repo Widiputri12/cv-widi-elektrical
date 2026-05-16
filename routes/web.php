@@ -73,8 +73,9 @@ Route::middleware(['auth', 'role:admin'])->prefix('admin')->name('admin.')->grou
  });
 
 Route::get('/run-scheduler-widi-secret-123', function () {
-    Artisan::call('schedule:run');
-    return "Scheduler executed!";
+    Artisan::call('remind:technicians');
+    $output = Artisan::output();
+    return "Scheduler executed!<br><pre>" . $output . "</pre>";
 });
 
 
